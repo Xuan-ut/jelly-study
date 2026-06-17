@@ -1,0 +1,43 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+derby.log
+
+# Spring Boot
+spring-shell.log
+
+# Build
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Work directory
+work/
+
+# AI / Claude
+.claude/
+
+# Image uploads
+image/

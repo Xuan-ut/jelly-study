@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('学习进度 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .progress-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .progress-stat-card {
+            background: #fff;
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s;
+        }
+        .progress-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .progress-stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .progress-stat-card .label {
+            font-size: 14px;
+            color: #999;
+            margin-top: 8px;
+        }
+        .progress-stat-card.blue .value { color: #0f88eb; }
+        .progress-stat-card.green .value { color: #52c41a; }
+        .progress-stat-card.orange .value { color: #fa8c16; }
+        .progress-stat-card.purple .value { color: #722ed1; }
+        .progress-stat-card.red .value { color: #ff4d4f; }
+        .progress-stat-card.cyan .value { color: #13c2c2; }
+        .progress-layout {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+        }
+        .plan-progress-card {
+            background: #fff;
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s;
+        }
+        .plan-progress-card:hover {
+            box-shadow: var(--shadow-md);
+        }
+        .plan-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .plan-progress-header h3 {
+            font-size: 16px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .plan-progress-header h3 a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .plan-progress-header h3 a:hover {
+            text-decoration: underline;
+        }
+        .plan-overall-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .plan-overall-bar .bar {
+            flex: 1;
+            height: 12px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .plan-overall-bar .bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+        .plan-overall-bar .percent {
+            font-size: 16px;
+            font-weight: 700;
+            min-width: 45px;
+            text-align: right;
+        }
+        .stage-progress-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .stage-progress-item:last-child { border-bottom: none; }
+        .stage-progress-item .stage-num {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .stage-progress-item .stage-num.completed {
+            background: #f6ffed;
+            color: #52c41a;
+        }
+        .stage-progress-item .name { flex: 1; font-size: 14px; color: #333; }
+        .stage-progress-item .bar {
+            width: 120px;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .stage-progress-item .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        .stage-progress-item .percent { font-size: 13px; color: #999; min-width: 40px; text-align: right; }
+        .stage-progress-item .btn-record {
+            padding: 3px 10px;
+            background: #e6f7ff;
+            color: #1890ff;
+            border: 1px solid #91d5ff;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .stage-progress-item .btn-record:hover {
+            background: #bae7ff;
+        }
+        .study-record-section {
+            background: #fff;
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+        .study-record-section h3 { font-size: 16px; color: #333; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .record-form-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .record-form-row .form-group {
+            margin-bottom: 0;
+            flex: 1;
+            min-width: 150px;
+        }
+        .sidebar-card {
+            background: #fff;
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+        .sidebar-card h3 {
+            font-size: 15px;
+            color: #333;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .streak-info {
+            text-align: center;
+            padding: 16px 0;
+        }
+        .streak-info .streak-number {
+            font-size: 48px;
+            font-weight: 700;
+            color: #fa8c16;
+            line-height: 1;
+        }
+        .streak-info .streak-label {
+            font-size: 14px;
+            color: #999;
+            margin-top: 8px;
+        }
+        .streak-info .streak-sub {
+            font-size: 12px;
+            color: #bbb;
+            margin-top: 4px;
+        }
+        .study-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+            margin-top: 12px;
+        }
+        .calendar-cell {
+            aspect-ratio: 1;
+            border-radius: 3px;
+            background: #f0f0f0;
+            transition: all 0.2s;
+        }
+        .calendar-cell.level-1 { background: #dcffe6; }
+        .calendar-cell.level-2 { background: #95de64; }
+        .calendar-cell.level-3 { background: #52c41a; }
+        .calendar-cell.level-4 { background: #389e0d; }
+        .calendar-cell.future { background: #fafafa; }
+        .calendar-label {
+            font-size: 10px;
+            color: #999;
+            text-align: center;
+        }
+        .recent-records {
+            list-style: none;
+            padding: 0;
+        }
+        .recent-records li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 13px;
+        }
+        .recent-records li:last-child { border-bottom: none; }
+        .recent-records .record-name { color: #333; flex: 1; }
+        .recent-records .record-time { color: #999; font-size: 12px; }
+        .recent-records .record-duration { color: var(--primary-color); font-weight: 500; }
+        .study-record-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .study-record-modal.show { display: flex; }
+        .study-record-box {
+            background: #fff;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            width: 90%;
+            max-width: 450px;
+        }
+        .study-record-box h3 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .duration-presets {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .duration-preset {
+            padding: 4px 12px;
+            background: #f5f5f5;
+            border: 1px solid #d9d9d9;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .duration-preset:hover, .duration-preset.active {
+            background: var(--primary-light);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+        .progress-tip {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 100%);
+            border-radius: var(--radius-md);
+            margin-top: 12px;
+            font-size: 13px;
+            color: #666;
+        }
+        .progress-tip strong { color: var(--primary-color); }
+        @media (max-width: 768px) {
+            .progress-layout { grid-template-columns: 1fr; }
+            .progress-overview { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('progress')"></div>
+
+    <div class="container">
+        <div id="not-logged-in-view" style="display:none;">
+            <div class="plan-login-tip">
+                <div class="icon">📊</div>
+                <h2>学习进度</h2>
+                <p>登录后即可查看您的学习进度和统计数据</p>
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="JellyStudyApp.showRegisterModal()">立即注册</button>
+                    <button class="btn btn-secondary" onclick="JellyStudyApp.showLoginModal()">已有账号登录</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="logged-in-view" style="display:none;">
+            <h1 class="page-title">学习进度</h1>
+
+            <div class="progress-overview">
+                <div class="progress-stat-card blue">
+                    <div class="value" id="stat-total-plans">0</div>
+                    <div class="label">学习计划</div>
+                </div>
+                <div class="progress-stat-card green">
+                    <div class="value" id="stat-avg-progress">0%</div>
+                    <div class="label">平均进度</div>
+                </div>
+                <div class="progress-stat-card orange">
+                    <div class="value" id="stat-study-time">0h</div>
+                    <div class="label">累计学习</div>
+                </div>
+                <div class="progress-stat-card purple">
+                    <div class="value" id="stat-completed">0</div>
+                    <div class="label">已完成阶段</div>
+                </div>
+                <div class="progress-stat-card red">
+                    <div class="value" id="stat-streak">0</div>
+                    <div class="label">连续学习(天)</div>
+                </div>
+                <div class="progress-stat-card cyan">
+                    <div class="value" id="stat-today-time">0m</div>
+                    <div class="label">今日学习</div>
+                </div>
+            </div>
+
+            <div class="progress-layout">
+                <div class="progress-main">
+                    <div class="study-record-section">
+                        <h3>📝 记录学习</h3>
+                        <div class="record-form-row">
+                            <div class="form-group">
+                                <label>选择计划</label>
+                                <select id="record-plan-select">
+                                    <option value="">选择计划</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>选择阶段</label>
+                                <select id="record-stage-select">
+                                    <option value="">选择阶段</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>学习时长(分钟)</label>
+                                <input type="number" id="record-duration" value="30" min="5" max="480">
+                            </div>
+                            <button class="btn btn-primary" onclick="recordStudy()">记录学习</button>
+                        </div>
+                        <div class="progress-tip">
+                            💡 进度根据学习时长自动计算：每学习约2分钟进度增加1%，阶段完成后需手动确认完成
+                        </div>
+                    </div>
+
+                    <div id="plans-progress-list"></div>
+                </div>
+
+                <div class="progress-sidebar">
+                    <div class="sidebar-card">
+                        <h3>🔥 学习连续</h3>
+                        <div class="streak-info">
+                            <div class="streak-number" id="streak-number">0</div>
+                            <div class="streak-label">天连续学习</div>
+                            <div class="streak-sub" id="streak-sub">开始你的学习之旅吧</div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-card">
+                        <h3>📋 今日计划</h3>
+                        <div id="daily-plan-content" style="color: #999; font-size: 14px; max-height: 300px; overflow-y: auto;">加载中...</div>
+                        <button class="btn btn-sm btn-secondary" style="margin-top: 10px; width: 100%;" onclick="loadDailyPlan()">🔄 刷新计划</button>
+                    </div>
+
+                    <div class="sidebar-card">
+                        <h3>📅 学习日历</h3>
+                        <div class="calendar-label" style="margin-bottom: 4px;">近28天学习记录</div>
+                        <div class="study-calendar" id="study-calendar"></div>
+                        <div style="display: flex; justify-content: flex-end; gap: 4px; margin-top: 8px; font-size: 10px; color: #999; align-items: center;">
+                            少
+                            <div style="width: 12px; height: 12px; background: #f0f0f0; border-radius: 2px;"></div>
+                            <div style="width: 12px; height: 12px; background: #dcffe6; border-radius: 2px;"></div>
+                            <div style="width: 12px; height: 12px; background: #95de64; border-radius: 2px;"></div>
+                            <div style="width: 12px; height: 12px; background: #52c41a; border-radius: 2px;"></div>
+                            <div style="width: 12px; height: 12px; background: #389e0d; border-radius: 2px;"></div>
+                            多
+                        </div>
+                    </div>
+
+                    <div class="sidebar-card">
+                        <h3>⏱️ 最近学习</h3>
+                        <ul class="recent-records" id="recent-records">
+                            <li style="color: #999;">暂无学习记录</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="study-record-modal" id="study-record-modal">
+        <div class="study-record-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">📝 记录学习</h3>
+                <button class="modal-close" onclick="hideRecordModal()">&times;</button>
+            </div>
+            <p id="modal-stage-name" style="font-size: 14px; color: #666; margin-bottom: 16px;"></p>
+            <div class="form-group">
+                <label>学习时长（分钟）</label>
+                <input type="number" id="modal-duration" value="30" min="5" max="480">
+                <div class="duration-presets">
+                    <span class="duration-preset" onclick="setDuration(15)">15分钟</span>
+                    <span class="duration-preset active" onclick="setDuration(30)">30分钟</span>
+                    <span class="duration-preset" onclick="setDuration(45)">45分钟</span>
+                    <span class="duration-preset" onclick="setDuration(60)">1小时</span>
+                    <span class="duration-preset" onclick="setDuration(90)">1.5小时</span>
+                    <span class="duration-preset" onclick="setDuration(120)">2小时</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>学习心得（可选）</label>
+                <textarea id="modal-notes" placeholder="记录你在这个阶段学到了什么" style="min-height: 80px;"></textarea>
+            </div>
+            <div class="progress-tip" id="modal-progress-tip">
+                预计进度增加：<strong>15%</strong>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+                <button class="btn btn-secondary" onclick="hideRecordModal()">取消</button>
+                <button class="btn btn-primary" onclick="submitModalRecord()">提交记录</button>
+            </div>
+        </div>
+    </div>
+
+    <div th:replace="fragments :: footer"></div>
+
+    <script>
+        var allPlans = [];
+        var studyRecords = [];
+        var modalPlanId = null;
+        var modalStageId = null;
+
+        function checkLoginState() {
+            var user = JellyStudyApp.getUser();
+            if (user && user.role !== 'GUEST') {
+                document.getElementById('not-logged-in-view').style.display = 'none';
+                document.getElementById('logged-in-view').style.display = 'block';
+                loadProgressData();
+            } else {
+                document.getElementById('not-logged-in-view').style.display = 'block';
+                document.getElementById('logged-in-view').style.display = 'none';
+            }
+        }
+
+        function loadProgressData() {
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+
+            axios.get('/api/study-plans/user/' + user.id)
+                .then(function(response) {
+                    allPlans = response.data || [];
+                    renderStats();
+                    renderPlansProgress();
+                    populateRecordForm();
+                    loadDailyPlan();
+                })
+                .catch(function(error) {
+                    console.error('加载进度数据失败:', error);
+                });
+
+            axios.get('/api/study-plans/progress/user/' + user.id)
+                .then(function(response) {
+                    var stats = response.data || {};
+                    if (stats.totalStudyTime !== undefined) {
+                        var hours = Math.round(stats.totalStudyTime / 60 * 10) / 10;
+                        document.getElementById('stat-study-time').textContent = hours + 'h';
+                    }
+                    if (stats.todayStudyTime !== undefined) {
+                        document.getElementById('stat-today-time').textContent = stats.todayStudyTime + 'm';
+                    }
+                    if (stats.streak !== undefined) {
+                        document.getElementById('stat-streak').textContent = stats.streak;
+                        document.getElementById('streak-number').textContent = stats.streak;
+                        if (stats.streak > 0) {
+                            document.getElementById('streak-sub').textContent = '继续保持，加油！';
+                        }
+                    }
+                    studyRecords = stats.recentRecords || [];
+                    renderCalendar(stats.dailyMap || {});
+                    renderRecentRecords();
+                })
+                .catch(function(error) {
+                    console.error('加载学习统计失败:', error);
+                    renderCalendar({});
+                });
+        }
+
+        function loadDailyPlan() {
+            var user = JellyStudyApp.getUser();
+            if (!user || allPlans.length === 0) return;
+            var activePlan = allPlans.find(function(p) { return p.status !== 'COMPLETED'; }) || allPlans[0];
+            axios.get('/api/study-plans/' + activePlan.id + '/ai-daily-plan?userId=' + user.id)
+                .then(function(response) {
+                    if (response.data.success && response.data.dailyPlan) {
+                        var container = document.getElementById('daily-plan-content');
+                        if (container) {
+                            container.innerHTML = '<div style="white-space:pre-wrap;line-height:1.8;font-size:14px;color:#333;word-break:break-word;">' + escapeHtml(response.data.dailyPlan) + '</div>';
+                        }
+                    }
+                })
+                .catch(function() {});
+        }
+
+        function renderStats() {
+            document.getElementById('stat-total-plans').textContent = allPlans.length;
+            var totalProgress = 0;
+            var completedStages = 0;
+            var totalStages = 0;
+            allPlans.forEach(function(plan) {
+                if (plan.stages) {
+                    plan.stages.forEach(function(stage) {
+                        totalProgress += (stage.progress || 0);
+                        totalStages++;
+                        if ((stage.progress || 0) >= 100) completedStages++;
+                    });
+                }
+            });
+            document.getElementById('stat-avg-progress').textContent = totalStages > 0 ? Math.round(totalProgress / totalStages) + '%' : '0%';
+            document.getElementById('stat-completed').textContent = completedStages;
+        }
+
+        function renderPlansProgress() {
+            var container = document.getElementById('plans-progress-list');
+            if (allPlans.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><h3>暂无学习计划</h3><p>先去<a href="/plans" style="color: var(--primary-color);">创建学习计划</a>吧</p></div>';
+                return;
+            }
+
+            var html = '';
+            allPlans.forEach(function(plan) {
+                var overallProgress = calculateOverallProgress(plan);
+                var barColor = overallProgress < 30 ? '#ff4d4f' : (overallProgress < 70 ? '#fa8c16' : '#52c41a');
+                html += '<div class="plan-progress-card">';
+                html += '<div class="plan-progress-header">';
+                html += '<h3><a href="/plans">📋</a> ' + escapeHtml(plan.title) + '</h3>';
+                html += '<span style="font-size:13px;color:#999;">' + (plan.stages ? plan.stages.length : 0) + '个阶段</span>';
+                html += '</div>';
+
+                html += '<div class="plan-overall-bar">';
+                html += '<span style="font-size:13px;color:#999;">总进度</span>';
+                html += '<div class="bar"><div class="bar-fill" style="width:' + overallProgress + '%;background:' + barColor + '"></div></div>';
+                html += '<span class="percent" style="color:' + barColor + '">' + overallProgress + '%</span>';
+                html += '</div>';
+
+                if (plan.stages && plan.stages.length > 0) {
+                    plan.stages.forEach(function(stage, idx) {
+                        var p = stage.progress || 0;
+                        var color = p < 30 ? '#ff4d4f' : (p < 70 ? '#fa8c16' : '#52c41a');
+                        var isCompleted = p >= 100;
+                        html += '<div class="stage-progress-item">';
+                        html += '<span class="stage-num ' + (isCompleted ? 'completed' : '') + '">' + (isCompleted ? '✓' : (idx + 1)) + '</span>';
+                        html += '<span class="name">' + escapeHtml(stage.name) + '</span>';
+                        html += '<div class="bar"><div class="bar-fill" style="width:' + p + '%;background:' + color + '"></div></div>';
+                        html += '<span class="percent">' + p + '%</span>';
+                        if (!isCompleted) {
+                            html += '<button class="btn-record" onclick="showRecordModal(\'' + plan.id + '\',\'' + (stage.stageId || stage.id || '') + '\',\'' + escapeHtml(stage.name) + '\')">记录</button>';
+                        }
+                        html += '</div>';
+                    });
+                } else {
+                    html += '<p style="color: #999; font-size: 14px;">暂无阶段</p>';
+                }
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        function populateRecordForm() {
+            var planSelect = document.getElementById('record-plan-select');
+            planSelect.innerHTML = '<option value="">选择计划</option>';
+            allPlans.forEach(function(plan) {
+                var option = document.createElement('option');
+                option.value = plan.id;
+                option.textContent = plan.title;
+                planSelect.appendChild(option);
+            });
+
+            planSelect.onchange = function() {
+                var stageSelect = document.getElementById('record-stage-select');
+                stageSelect.innerHTML = '<option value="">选择阶段</option>';
+                var selectedPlan = allPlans.find(function(p) { return p.id === planSelect.value; });
+                if (selectedPlan && selectedPlan.stages) {
+                    selectedPlan.stages.forEach(function(stage) {
+                        var option = document.createElement('option');
+                        option.value = stage.stageId || stage.id || '';
+                        option.textContent = stage.name;
+                        stageSelect.appendChild(option);
+                    });
+                }
+            };
+        }
+
+        function recordStudy() {
+            var user = JellyStudyApp.getUser();
+            var planId = document.getElementById('record-plan-select').value;
+            var stageId = document.getElementById('record-stage-select').value;
+            var duration = parseInt(document.getElementById('record-duration').value) || 30;
+
+            if (!planId || !stageId) {
+                alert('请选择计划和阶段');
+                return;
+            }
+
+            submitStudyRecord(user.id, planId, stageId, duration);
+        }
+
+        function showRecordModal(planId, stageId, stageName) {
+            modalPlanId = planId;
+            modalStageId = stageId;
+            document.getElementById('modal-stage-name').textContent = '阶段: ' + stageName;
+            document.getElementById('modal-duration').value = 30;
+            document.getElementById('modal-notes').value = '';
+            updateProgressTip(30);
+            document.getElementById('study-record-modal').classList.add('show');
+        }
+
+        function hideRecordModal() {
+            document.getElementById('study-record-modal').classList.remove('show');
+        }
+
+        function setDuration(mins) {
+            document.getElementById('modal-duration').value = mins;
+            document.querySelectorAll('.duration-preset').forEach(function(p) { p.classList.remove('active'); });
+            event.target.classList.add('active');
+            updateProgressTip(mins);
+        }
+
+        function updateProgressTip(duration) {
+            var increase = Math.min(100, Math.round(duration / 2));
+            document.getElementById('modal-progress-tip').innerHTML = '预计进度增加：<strong>' + increase + '%</strong>';
+        }
+
+        document.getElementById('modal-duration').addEventListener('input', function() {
+            updateProgressTip(parseInt(this.value) || 30);
+        });
+
+        function submitModalRecord() {
+            var user = JellyStudyApp.getUser();
+            var duration = parseInt(document.getElementById('modal-duration').value) || 30;
+            if (!modalPlanId) {
+                alert('请选择学习计划');
+                return;
+            }
+            if (!modalStageId) {
+                alert('该阶段缺少标识，请重新创建计划');
+                return;
+            }
+            submitStudyRecord(user.id, modalPlanId, modalStageId, duration);
+            hideRecordModal();
+        }
+
+        function submitStudyRecord(userId, planId, stageId, duration) {
+            axios.post('/api/study-plans/progress/record', {
+                userId: userId,
+                planId: planId || '',
+                stageId: stageId || '',
+                knowledgePointId: '',
+                duration: duration
+            }).then(function(response) {
+                if (response.data.success) {
+                    var plan = allPlans.find(function(p) { return p.id === planId; });
+                    var stageName = '';
+                    if (plan && plan.stages) {
+                        var stage = plan.stages.find(function(s) { return (s.stageId || s.id) === stageId; });
+                        if (stage) stageName = stage.name;
+                    }
+                    JellyStudyApp.recordActivity('STUDY', stageId, stageName || '学习阶段', '学习了' + duration + '分钟', { planId: planId, duration: duration });
+                    loadProgressData();
+
+                    // Spirit reaction
+                    var expGained = Math.round(duration / 6);
+                    if (window.SpiritNotify) {
+                        SpiritNotify.celebrate('学习了' + duration + '分钟' + (stageName ? '「' + stageName + '」' : ''), expGained, 'study_recorded');
+                    }
+                } else {
+                    alert('记录失败: ' + (response.data.message || ''));
+                }
+            }).catch(function(error) {
+                alert('记录失败: ' + error.message);
+            });
+        }
+
+        function renderCalendar(dailyMap) {
+            var container = document.getElementById('study-calendar');
+            var today = new Date();
+            var html = '';
+            for (var i = 27; i >= 0; i--) {
+                var date = new Date(today);
+                date.setDate(date.getDate() - i);
+                var key = date.toISOString().split('T')[0];
+                var minutes = dailyMap[key] || 0;
+                var level = 0;
+                if (minutes > 0) level = 1;
+                if (minutes >= 30) level = 2;
+                if (minutes >= 60) level = 3;
+                if (minutes >= 120) level = 4;
+                var isFuture = i < 0;
+                var cls = isFuture ? 'future' : (level > 0 ? 'level-' + level : '');
+                html += '<div class="calendar-cell ' + cls + '" title="' + key + ': ' + minutes + '分钟"></div>';
+            }
+            container.innerHTML = html;
+        }
+
+        function renderRecentRecords() {
+            var container = document.getElementById('recent-records');
+            if (!studyRecords || studyRecords.length === 0) {
+                container.innerHTML = '<li style="color: #999;">暂无学习记录</li>';
+                return;
+            }
+            var html = '';
+            studyRecords.slice(0, 8).forEach(function(record) {
+                html += '<li>';
+                html += '<span class="record-name">' + escapeHtml(record.stageName || record.planTitle || '学习') + '</span>';
+                html += '<span class="record-duration">' + (record.duration || 0) + '分钟</span>';
+                if (record.lastStudyTime) {
+                    var d = new Date(record.lastStudyTime);
+                    html += '<span class="record-time">' + (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0') + '</span>';
+                }
+                html += '</li>';
+            });
+            container.innerHTML = html;
+        }
+
+        function calculateOverallProgress(plan) {
+            if (!plan.stages || plan.stages.length === 0) return 0;
+            var total = 0;
+            plan.stages.forEach(function(s) { total += (s.progress || 0); });
+            return Math.round(total / plan.stages.length);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        afterLogin = function(user) { checkLoginState(); };
+        afterLogout = function() { checkLoginState(); };
+
+        checkLoginState();
+    </script>
+<div th:replace="fragments :: spirit-widget"></div>
+</body>
+</html>

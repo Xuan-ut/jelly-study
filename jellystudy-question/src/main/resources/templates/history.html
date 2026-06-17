@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('浏览历史 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .history-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .history-header h2 {
+            font-size: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .history-header h2::before {
+            content: '📖';
+        }
+        .history-count {
+            font-size: 13px;
+            color: #999;
+            font-weight: normal;
+            margin-left: 8px;
+        }
+        .clear-btn {
+            padding: 6px 16px;
+            font-size: 13px;
+            color: #ff4d4f;
+            background: #fff;
+            border: 1px solid #ffccc7;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .clear-btn:hover {
+            background: #fff1f0;
+            border-color: #ff4d4f;
+        }
+        .history-empty {
+            text-align: center;
+            padding: 80px 20px;
+            color: #999;
+        }
+        .history-empty .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        .history-empty p {
+            font-size: 15px;
+            margin-bottom: 20px;
+        }
+        .history-empty a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .history-empty a:hover {
+            text-decoration: underline;
+        }
+        .history-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 16px 20px;
+            background: #fff;
+            border-radius: var(--radius-md);
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: #333;
+        }
+        .history-item:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+        .history-index {
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            text-align: center;
+            background: #f0f0f0;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 600;
+            color: #999;
+            margin-right: 16px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .history-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .history-info .title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.4;
+        }
+        .history-item:hover .history-info .title {
+            color: var(--primary-color);
+        }
+        .history-info .meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            color: #999;
+        }
+        .history-info .meta .author {
+            color: var(--primary-color);
+        }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('history')"></div>
+    
+    <div class="container">
+        <div class="history-container">
+            <div class="history-header">
+                <h2>浏览历史 <span class="history-count" id="history-count"></span></h2>
+                <button class="clear-btn" id="clear-btn" onclick="clearHistory()" style="display:none;">清除全部历史</button>
+            </div>
+            <div id="history-list"></div>
+        </div>
+    </div>
+    
+
+    
+    <script>
+        function getDifficultyTag(difficulty) {
+            if (!difficulty) return '';
+            const style = difficulty === '简单' ? 'difficulty-easy' : 
+                         difficulty === '中等' ? 'difficulty-medium' : 'difficulty-hard';
+            return `<span class="difficulty-tag ${style}">${difficulty}</span>`;
+        }
+        
+        function loadHistory() {
+            axios.get('/api/questions/history')
+                .then(response => {
+                    const history = response.data;
+                    const listEl = document.getElementById('history-list');
+                    const countEl = document.getElementById('history-count');
+                    const clearBtn = document.getElementById('clear-btn');
+                    
+                    if (!history || history.length === 0) {
+                        countEl.textContent = '';
+                        clearBtn.style.display = 'none';
+                        listEl.innerHTML = `
+                            <div class="history-empty">
+                                <div class="icon">📭</div>
+                                <p>暂无浏览记录</p>
+                                <a href="/">去首页看看吧 →</a>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    countEl.textContent = `共 ${history.length} 条`;
+                    clearBtn.style.display = 'inline-block';
+                    
+                    let html = '';
+                    history.forEach((item, index) => {
+                        const difficulty = item.difficulty ? getDifficultyTag(item.difficulty) : '';
+                        const dateStr = item.createTime ? new Date(item.createTime).toLocaleDateString() : '';
+                        html += `
+                            <a href="/question?id=${item.id}" class="history-item">
+                                <span class="history-index">${index + 1}</span>
+                                <div class="history-info">
+                                    <div class="title">${item.title}</div>
+                                    <div class="meta">
+                                        ${difficulty}
+                                        <span class="author">${item.author || ''}</span>
+                                        <span>${dateStr}</span>
+                                        ${item.likeCount ? `<span>👍 ${item.likeCount}</span>` : ''}
+                                    </div>
+                                </div>
+                            </a>
+                        `;
+                    });
+                    listEl.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('加载浏览历史失败:', error);
+                    document.getElementById('history-list').innerHTML = `
+                        <div class="history-empty">
+                            <div class="icon">⚠️</div>
+                            <p>加载失败，请稍后重试</p>
+                        </div>
+                    `;
+                });
+        }
+        
+        function clearHistory() {
+            if (!confirm('确定要清除所有浏览历史吗？此操作不可撤销。')) return;
+            
+            axios.delete('/api/questions/history')
+                .then(() => {
+                    loadHistory();
+                })
+                .catch(error => {
+                    alert('清除失败，请重试');
+                    console.error(error);
+                });
+        }
+        
+        loadHistory();
+    </script>
+
+    <div th:replace="fragments :: footer"></div>
+</body>
+</html>

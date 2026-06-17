@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('知识点相关问题 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .question-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .question-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 16px;
+            background-color: #fafafa;
+            border-radius: var(--radius-md);
+            transition: background-color 0.2s ease;
+        }
+        .question-item:hover {
+            background-color: #f0f0f0;
+        }
+        .question-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .question-info h4 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        .question-info h4 a {
+            color: #333;
+            text-decoration: none;
+        }
+        .question-info h4 a:hover {
+            color: #0f88eb;
+        }
+        .question-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 12px;
+            color: #999;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('knowledge')"></div>
+    
+    <div class="container">
+        <h1 class="page-title" id="knowledge-point-name">知识点相关问题</h1>
+        
+        <div class="section-card">
+            <div class="section-header">相关问题列表</div>
+            <div class="section-body">
+                <div class="question-list" id="questions-list">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+
+    
+    <script>
+        // 获取URL参数
+        function getUrlParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+        
+        // 加载知识点相关问题
+        function loadRelatedQuestions() {
+            const knowledgePointId = getUrlParam('id');
+            const knowledgePointName = getUrlParam('name');
+            
+            if (knowledgePointName) {
+                document.getElementById('knowledge-point-name').textContent = `${decodeURIComponent(knowledgePointName)} 相关问题`;
+            }
+            
+            if (knowledgePointId) {
+                axios.get(`/api/questions/knowledge-point/${knowledgePointId}`)
+                    .then(response => {
+                        const questions = response.data;
+                        const container = document.getElementById('questions-list');
+                        
+                        if (questions.length === 0) {
+                            container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><div>暂无相关问题</div></div>';
+                            return;
+                        }
+                        
+                        container.innerHTML = '';
+                        questions.forEach(question => {
+                            const div = document.createElement('div');
+                            div.className = 'question-item';
+                            div.innerHTML = `
+                                <div class="question-info">
+                                    <h4><a href="/question?id=${question.id}">${question.title}</a></h4>
+                                    <div class="question-meta">
+                                        <span>👤 ${question.author || '匿名用户'}</span>
+                                        <span>💬 ${question.answerCount || 0} 回答</span>
+                                        <span>❤️ ${question.likeCount || 0} 点赞</span>
+                                        <span>📅 ${new Date(question.createTime).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            `;
+                            container.appendChild(div);
+                        });
+                    })
+                    .catch(error => {
+                        document.getElementById('questions-list').innerHTML = '<div class="empty-state"><div class="icon">❌</div><div>加载失败</div></div>';
+                        console.error(error);
+                    });
+            } else {
+                document.getElementById('questions-list').innerHTML = '<div class="empty-state"><div class="icon">❌</div><div>知识点ID不存在</div></div>';
+            }
+        }
+        
+        // 初始化
+        loadRelatedQuestions();
+    </script>
+
+    <div th:replace="fragments :: footer"></div>
+</body>
+</html>

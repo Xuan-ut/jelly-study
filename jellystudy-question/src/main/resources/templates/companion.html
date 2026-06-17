@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('AI学习精灵 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .companion-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            margin-bottom: 24px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+        .spirit-avatar-wrap {
+            position: relative;
+            flex-shrink: 0;
+        }
+        .spirit-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 56px;
+            border: 3px solid rgba(255,255,255,0.4);
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: visible;
+        }
+        /* 详情页等级特效 */
+        .spirit-avatar.lv0 {
+            background:
+                radial-gradient(circle at 35% 30%, rgba(255,255,255,0.7) 0%, transparent 40%),
+                linear-gradient(135deg, #7dd3fc, #38bdf8, #22d3ee);
+            box-shadow: 0 0 30px rgba(56,189,248,0.5), 0 0 60px rgba(56,189,248,0.2), inset 0 -10px 24px rgba(0,0,0,0.08);
+            border-color: rgba(125,211,252,0.6);
+        }
+        .spirit-avatar.lv1 {
+            background:
+                radial-gradient(circle at 30% 25%, rgba(255,255,255,0.8) 0%, transparent 35%),
+                linear-gradient(145deg, #86efac, #4ade80, #22c55e, #16a34a);
+            box-shadow: 0 0 35px rgba(74,222,128,0.55), 0 0 70px rgba(74,222,128,0.25), inset 0 -12px 28px rgba(0,0,0,0.1);
+            border-color: rgba(134,239,172,0.6);
+        }
+        .spirit-avatar.lv2 {
+            background:
+                radial-gradient(circle at 32% 28%, rgba(255,255,255,0.85) 0%, transparent 33%),
+                conic-gradient(from 200deg, #818cf8, #6366f1, #8b5cf6, #a78bfa, #c084fc, #a78bfa, #8b5cf6, #6366f1, #818cf8);
+            box-shadow: 0 0 40px rgba(139,92,246,0.55), 0 0 80px rgba(139,92,246,0.25), inset 0 -14px 30px rgba(0,0,0,0.12);
+            border-color: rgba(167,139,250,0.6);
+        }
+        .spirit-avatar.lv3 {
+            background:
+                radial-gradient(circle at 30% 26%, rgba(255,255,255,0.88) 0%, transparent 32%),
+                conic-gradient(from 220deg, #fcd34d, #f59e0b, #f97316, #fb923c, #fbbf24, #fcd34d, #f59e0b, #f97316, #fcd34d);
+            box-shadow: 0 0 45px rgba(245,158,11,0.6), 0 0 90px rgba(245,158,11,0.3), inset 0 -16px 32px rgba(0,0,0,0.13);
+            border-color: rgba(251,191,36,0.6);
+        }
+        .spirit-avatar.lv4 {
+            background:
+                radial-gradient(circle at 28% 24%, rgba(255,255,255,0.9) 0%, transparent 30%),
+                conic-gradient(from 240deg, #f472b6, #ec4899, #db2777, #e879f9, #c084fc, #a78bfa, #818cf8, #6366f1, #ec4899);
+            box-shadow: 0 0 50px rgba(236,72,153,0.6), 0 0 100px rgba(236,72,153,0.3), inset 0 -18px 34px rgba(0,0,0,0.14);
+            border-color: rgba(244,114,182,0.6);
+        }
+        .spirit-avatar.lv5 {
+            background:
+                radial-gradient(circle at 26% 22%, rgba(255,255,255,0.92) 0%, transparent 28%),
+                conic-gradient(from 260deg, #fef3c7, #fde68a, #fcd34d, #f59e0b, #d97706, #dc2626, #ea580c, #f59e0b, #fcd34d, #fde68a, #fef3c7);
+            box-shadow: 0 0 60px rgba(217,119,6,0.65), 0 0 120px rgba(217,119,6,0.35), 0 0 180px rgba(245,158,11,0.15), inset 0 -20px 38px rgba(0,0,0,0.15);
+            border-color: rgba(253,213,138,0.7);
+            animation: detail-sage-glow 2s ease-in-out infinite !important;
+        }
+        @keyframes detail-sage-glow {
+            0%,100% { box-shadow: 0 0 60px rgba(217,119,6,0.65), 0 0 120px rgba(217,119,6,0.35); }
+            50% { box-shadow: 0 0 80px rgba(217,119,6,0.8), 0 0 150px rgba(217,119,6,0.45), 0 0 200px rgba(245,158,11,0.2); }
+        }
+        /* 详情页光环 */
+        .spirit-avatar .detail-halo {
+            position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+            width: 50px; height: 14px; border: 3px solid rgba(251,207,232,0.8);
+            border-radius: 50%;
+            box-shadow: 0 0 14px rgba(236,72,153,0.5), 0 0 28px rgba(192,132,252,0.3), inset 0 0 6px rgba(255,255,255,0.6);
+            animation: detail-halo-float 2.5s ease-in-out infinite;
+            display: none;
+        }
+        .spirit-avatar.lv4 .detail-halo,
+        .spirit-avatar.lv5 .detail-halo { display: block; }
+        .spirit-avatar.lv5 .detail-halo {
+            border-color: rgba(253,213,138,0.9);
+            box-shadow: 0 0 18px rgba(253,196,104,0.7), 0 0 36px rgba(217,119,6,0.4), inset 0 0 8px rgba(255,255,255,0.7);
+        }
+        @keyframes detail-halo-float {
+            0%,100% { transform: translateX(-50%) translateY(0) scale(1); }
+            50% { transform: translateX(-50%) translateY(-4px) scale(1.06); }
+        }
+        /* 详情页翅膀 */
+        .spirit-avatar .detail-wing {
+            position: absolute; top: 12%; width: 28px; height: 44px;
+            background: linear-gradient(175deg, rgba(255,255,255,0.85), rgba(199,210,254,0.5));
+            border-radius: 50% 50% 18% 18%;
+            backdrop-filter: blur(3px);
+            display: none;
+            animation: detail-wing-flap 1.4s ease-in-out infinite;
+        }
+        .spirit-avatar .detail-wing.left { left: -18px; transform-origin: right center; }
+        .spirit-avatar .detail-wing.right { right: -18px; transform-origin: left center; scaleX(-1); animation-delay: -0.7s; }
+        .spirit-avatar.lv2 .detail-wing,
+        .spirit-avatar.lv3 .detail-wing,
+        .spirit-avatar.lv4 .detail-wing,
+        .spirit-avatar.lv5 .detail-wing { display: block; }
+        .spirit-avatar.lv2 .detail-wing {
+            width: 22px; height: 34px; top: 16%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(165,180,252,0.4));
+            box-shadow: 0 0 10px rgba(139,92,246,0.3);
+        }
+        .spirit-avatar.lv3 .detail-wing {
+            width: 28px; height: 44px;
+            background: linear-gradient(175deg, rgba(255,255,255,0.9), rgba(254,215,170,0.5), rgba(251,146,60,0.3));
+            box-shadow: 0 0 14px rgba(251,191,36,0.4);
+        }
+        .spirit-avatar.lv4 .detail-wing {
+            width: 32px; height: 50px;
+            background: linear-gradient(172deg, rgba(255,255,255,0.93), rgba(251,207,232,0.6), rgba(232,121,249,0.35));
+            box-shadow: 0 0 18px rgba(236,72,153,0.45);
+        }
+        .spirit-avatar.lv5 .detail-wing {
+            width: 36px; height: 56px;
+            background: linear-gradient(170deg, rgba(255,255,255,0.95), rgba(254,243,199,0.7), rgba(253,213,138,0.45), rgba(217,119,6,0.2));
+            box-shadow: 0 0 22px rgba(253,196,104,0.5);
+        }
+        @keyframes detail-wing-flap {
+            0%,100% { transform: rotate(14deg) scaleY(1); }
+            50% { transform: rotate(2deg) scaleY(0.76); }
+        }
+        /* 详情页王冠 */
+        .spirit-avatar .detail-crown {
+            position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
+            font-size: 22px; display: none;
+            filter: drop-shadow(0 0 8px rgba(253,196,104,0.8));
+            animation: detail-crown-shimmer 2s ease-in-out infinite;
+        }
+        .spirit-avatar.lv5 .detail-crown { display: block; }
+        @keyframes detail-crown-shimmer {
+            0%,100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.1) rotate(3deg); }
+        }
+        /* 详情页旋转环 */
+        .spirit-avatar .detail-ring {
+            position: absolute; inset: -10px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.2);
+            animation: detail-ring-rotate 8s linear infinite;
+            pointer-events: none;
+        }
+        .spirit-avatar.lv0 .detail-ring { border-color: rgba(125,211,252,0.3); border-top-color: rgba(125,211,252,0.8); }
+        .spirit-avatar.lv1 .detail-ring { border-color: rgba(134,239,172,0.3); border-top-color: rgba(132,204,22,0.85); }
+        .spirit-avatar.lv2 .detail-ring { border-color: rgba(167,139,250,0.3); border-top-color: rgba(192,132,252,0.9); }
+        .spirit-avatar.lv3 .detail-ring { border-color: rgba(251,191,36,0.3); border-top-color: rgba(252,211,77,0.9); }
+        .spirit-avatar.lv4 .detail-ring { border-color: rgba(232,121,249,0.3); border-top-color: rgba(244,114,182,0.95); border-width: 2.5px; }
+        .spirit-avatar.lv5 .detail-ring { border-color: rgba(253,213,138,0.3); border-top-color: rgba(253,196,104,0.98); border-bottom-color: rgba(220,38,38,0.7); border-width: 3px; }
+        @keyframes detail-ring-rotate { to { transform: rotate(360deg); } }
+        .spirit-avatar.sleeping { filter: grayscale(0.6); opacity: 0.5; }
+        .spirit-info { flex: 1; }
+        .spirit-info h2 { font-size: 28px; margin-bottom: 4px; }
+        .spirit-info .spirit-level { font-size: 14px; opacity: 0.85; margin-bottom: 12px; }
+        .spirit-stats { display: flex; gap: 24px; }
+        .spirit-stat { text-align: center; }
+        .spirit-stat-val { font-size: 24px; font-weight: 700; }
+        .spirit-stat-label { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+        .spirit-emotion {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 16px; border-radius: 20px;
+            font-size: 14px; font-weight: 500;
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Tabs */
+        .tab-nav {
+            display: flex; gap: 0; margin-bottom: 20px;
+            background: var(--card-bg); border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm); overflow: hidden;
+        }
+        .tab-btn {
+            flex: 1; padding: 14px 16px; text-align: center; cursor: pointer;
+            font-size: 14px; font-weight: 500; color: var(--text-secondary);
+            border: none; background: transparent; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .tab-btn:hover { color: var(--primary-color); background: var(--primary-light); }
+        .tab-btn.active { color: white; background: var(--primary-color); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Feynman */
+        .feynman-flow { display: flex; flex-direction: column; gap: 16px; }
+        .feynman-round { display: flex; gap: 16px; align-items: flex-start; }
+        .feynman-round .avatar {
+            width: 40px; height: 40px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
+        }
+        .feynman-round .avatar.spirit-av { background: #e6f7ff; }
+        .feynman-round .avatar.user-av { background: #f6ffed; }
+        .feynman-round .msg {
+            flex: 1; padding: 12px 16px; border-radius: var(--radius-md);
+            font-size: 14px; line-height: 1.6;
+        }
+        .feynman-round .msg.spirit-msg { background: #f0f7ff; border: 1px solid #d6e8ff; }
+        .feynman-round .msg.user-msg { background: #f6ffed; border: 1px solid #d9f7be; }
+        .feynman-round .msg .meta { font-size: 12px; color: #999; margin-bottom: 6px; }
+        .assessment-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+        .assessment-dim {
+            text-align: center; min-width: 64px;
+        }
+        .assessment-dim .dim-name { font-size: 11px; color: #999; margin-bottom: 2px; }
+        .assessment-dim .dim-bar {
+            height: 4px; border-radius: 2px; background: #e8e8e8; overflow: hidden;
+        }
+        .assessment-dim .dim-fill {
+            height: 100%; border-radius: 2px; transition: width 0.4s ease;
+        }
+        .dim-fill.high { background: var(--success-color); }
+        .dim-fill.mid { background: var(--warning-color); }
+        .dim-fill.low { background: var(--error-color); }
+
+        /* Knowledge Tree */
+        .tree-view { display: flex; flex-direction: column; gap: 12px; }
+        .tree-branch { background: var(--card-bg); border-radius: var(--radius-md);
+            padding: 16px; border: 1px solid var(--border-light); }
+        .tree-branch-header { display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 10px; }
+        .tree-branch-name { font-weight: 600; font-size: 15px; }
+        .tree-nodes { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tree-node {
+            padding: 6px 12px; border-radius: 16px; font-size: 13px;
+            background: #f5f5f5; display: flex; align-items: center; gap: 4px;
+        }
+        .tree-node.mastered { background: #f6ffed; color: var(--success-color); }
+        .tree-node.learning { background: #fff7e6; color: var(--warning-color); }
+        .tree-node.weak { background: #fff2f0; color: var(--error-color); }
+        .prediction-compare {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;
+        }
+        .prediction-card {
+            padding: 20px; border-radius: var(--radius-md); text-align: center;
+        }
+        .prediction-card.optimistic { background: linear-gradient(135deg, #f6ffed 0%, #e6ffe6 100%); border: 1px solid #b7eb8f; }
+        .prediction-card.pessimistic { background: linear-gradient(135deg, #fff7e6 0%, #fff2e6 100%); border: 1px solid #ffd591; }
+
+        /* Hive */
+        .hive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .warning-item {
+            display: flex; align-items: flex-start; gap: 12px; padding: 12px;
+            border-radius: var(--radius-md); margin-bottom: 8px;
+        }
+        .warning-item.warn { background: #fff7e6; border: 1px solid #ffd591; }
+        .warning-item.info { background: #e6f7ff; border: 1px solid #91d5ff; }
+        .warning-item.critical { background: #fff2f0; border: 1px solid #ffccc7; }
+        .anomaly-dim { display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid var(--border-light); }
+        .anomaly-status { padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+        .anomaly-status.NORMAL { background: #f6ffed; color: var(--success-color); }
+        .anomaly-status.WARNING { background: #fff7e6; color: var(--warning-color); }
+        .anomaly-status.CRITICAL { background: #fff2f0; color: var(--error-color); }
+        .path-card {
+            padding: 16px; border-radius: var(--radius-md); border: 2px solid var(--border-light);
+            margin-bottom: 12px; transition: all 0.2s;
+        }
+        .path-card.recommended { border-color: var(--primary-color); background: var(--primary-light); }
+        .path-card:hover { box-shadow: var(--shadow-md); }
+
+        .empty-state { text-align: center; padding: 48px 24px; color: #999; }
+        .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+        .chat-container { height: 300px; }
+
+        /* Knowledge Tree */
+        .tree-node-el {
+            position: absolute; text-align: center; z-index: 2;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .tree-node-dot {
+            width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; transition: all 0.5s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            position: relative; background: #fff;
+        }
+        .tree-node-dot.mastered {
+            border: 3px solid #52c41a; background: linear-gradient(135deg, #f6ffed, #eaffd6);
+            box-shadow: 0 2px 12px rgba(82,196,26,0.15);
+        }
+        .tree-node-dot.learning {
+            border: 3px solid #fa8c16; background: linear-gradient(135deg, #fffbe6, #fff1d6);
+            box-shadow: 0 2px 12px rgba(250,140,22,0.15);
+        }
+        .tree-node-dot.stale {
+            border: 3px solid #d9d9d9; background: linear-gradient(135deg, #fafafa, #f0f0f0);
+            filter: grayscale(0.6); opacity: 0.7;
+        }
+        .tree-node-label {
+            font-size: 13px; font-weight: 500; color: #333;
+            max-width: 90px; line-height: 1.4; word-break: break-all;
+        }
+        .tree-node-label.stale { color: #bbb; text-decoration: line-through; text-decoration-color: #ddd; }
+
+        /* Spirit Detail */
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .profile-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .profile-label { font-size: 13px; color: #888; font-weight: 500; }
+        .profile-val { font-size: 14px; font-weight: 600; color: #333; text-align: right; }
+        .mini-progress { width: 120px; height: 6px; background: #f0f0f0; border-radius: 3px; margin-top: 4px; display: inline-block; vertical-align: middle; margin-left: 8px; }
+        .mini-progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.4s ease; }
+        .mini-progress-fill.satiation { background: linear-gradient(90deg, #52c41a, #73d13d); }
+        .appearance-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .appearance-label { font-size: 13px; color: #888; }
+        .appearance-val { font-size: 14px; font-weight: 500; color: #667eea; }
+        .skill-tag { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; margin: 4px; }
+        .skill-tag.unlocked { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .skill-tag.locked { background: #fafafa; color: #d9d9d9; border: 1px solid #f0f0f0; }
+        .btn-outline { background: #fff; color: #667eea; border: 1px solid #667eea; }
+        .btn-outline:hover { background: #f0f5ff; }
+        .btn-sm { padding: 8px 16px; font-size: 13px; }
+
+        /* ===== 精灵外形选择器 ===== */
+        .appearance-selector {
+            display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; padding: 8px 0;
+        }
+        .appearance-option {
+            width: 100px; text-align: center; padding: 12px 8px; border-radius: 16px;
+            border: 2px solid #e8e8e8; cursor: pointer; transition: all 0.3s ease;
+            background: #fafafa; position: relative;
+        }
+        .appearance-option:hover { border-color: #b8c4ff; background: #f5f7ff; transform: translateY(-2px); }
+        .appearance-option.selected { border-color: #667eea; background: linear-gradient(135deg, #f0f3ff, #e8edff); box-shadow: 0 4px 16px rgba(102,126,234,0.2); }
+        .appearance-option.locked { opacity: 0.4; cursor: not-allowed; filter: grayscale(0.8); }
+        .appearance-option.locked:hover { border-color: #e8e8e8; background: #fafafa; transform: none; }
+        .appearance-option .level-img {
+            width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 8px;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .appearance-option .level-img img {
+            width: 100%; height: 100%; object-fit: contain;
+        }
+        .appearance-option .level-label {
+            font-size: 12px; font-weight: 600; color: #333; margin-bottom: 2px;
+        }
+        .appearance-option .level-name {
+            font-size: 11px; color: #888;
+        }
+        .appearance-option .lock-badge {
+            position: absolute; top: 6px; right: 6px; font-size: 12px;
+            background: rgba(0,0,0,0.5); color: #fff; border-radius: 8px;
+            padding: 1px 5px; font-size: 10px;
+        }
+        .appearance-option .current-badge {
+            position: absolute; top: 6px; left: 6px; font-size: 10px;
+            background: #667eea; color: #fff; border-radius: 8px;
+            padding: 1px 5px;
+        }
+
+        /* ===== 精灵档案卡片 ===== */
+        .spirit-profile-card {
+            text-align: center; padding: 24px;
+        }
+        .spirit-profile-card .profile-avatar {
+            width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 12px;
+            overflow: visible; border: 3px solid #667eea;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.2);
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 48px;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .spirit-profile-card .profile-avatar.lv0 {
+            background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.7) 0%, transparent 40%), linear-gradient(135deg, #7dd3fc, #38bdf8, #22d3ee);
+            border-color: rgba(125,211,252,0.6);
+            box-shadow: 0 0 25px rgba(56,189,248,0.5), 0 0 50px rgba(56,189,248,0.2);
+        }
+        .spirit-profile-card .profile-avatar.lv1 {
+            background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.8) 0%, transparent 35%), linear-gradient(145deg, #86efac, #4ade80, #22c55e, #16a34a);
+            border-color: rgba(134,239,172,0.6);
+            box-shadow: 0 0 30px rgba(74,222,128,0.55), 0 0 60px rgba(74,222,128,0.25);
+        }
+        .spirit-profile-card .profile-avatar.lv2 {
+            background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.85) 0%, transparent 33%), conic-gradient(from 200deg, #818cf8, #6366f1, #8b5cf6, #a78bfa, #c084fc, #a78bfa, #8b5cf6, #6366f1, #818cf8);
+            border-color: rgba(167,139,250,0.6);
+            box-shadow: 0 0 35px rgba(139,92,246,0.55), 0 0 70px rgba(139,92,246,0.25);
+        }
+        .spirit-profile-card .profile-avatar.lv3 {
+            background: radial-gradient(circle at 30% 26%, rgba(255,255,255,0.88) 0%, transparent 32%), conic-gradient(from 220deg, #fcd34d, #f59e0b, #f97316, #fb923c, #fbbf24, #fcd34d, #f59e0b, #f97316, #fcd34d);
+            border-color: rgba(251,191,36,0.6);
+            box-shadow: 0 0 40px rgba(245,158,11,0.6), 0 0 80px rgba(245,158,11,0.3);
+        }
+        .spirit-profile-card .profile-avatar.lv4 {
+            background: radial-gradient(circle at 28% 24%, rgba(255,255,255,0.9) 0%, transparent 30%), conic-gradient(from 240deg, #f472b6, #ec4899, #db2777, #e879f9, #c084fc, #a78bfa, #818cf8, #6366f1, #ec4899);
+            border-color: rgba(244,114,182,0.6);
+            box-shadow: 0 0 45px rgba(236,72,153,0.6), 0 0 90px rgba(236,72,153,0.3);
+        }
+        .spirit-profile-card .profile-avatar.lv5 {
+            background: radial-gradient(circle at 26% 22%, rgba(255,255,255,0.92) 0%, transparent 28%), conic-gradient(from 260deg, #fef3c7, #fde68a, #fcd34d, #f59e0b, #d97706, #dc2626, #ea580c, #f59e0b, #fcd34d, #fde68a, #fef3c7);
+            border-color: rgba(253,213,138,0.7);
+            box-shadow: 0 0 50px rgba(217,119,6,0.65), 0 0 100px rgba(217,119,6,0.35), 0 0 150px rgba(245,158,11,0.15);
+            animation: profile-sage-glow 2s ease-in-out infinite;
+        }
+        @keyframes profile-sage-glow {
+            0%,100% { box-shadow: 0 0 50px rgba(217,119,6,0.65), 0 0 100px rgba(217,119,6,0.35); }
+            50% { box-shadow: 0 0 70px rgba(217,119,6,0.8), 0 0 130px rgba(217,119,6,0.45), 0 0 170px rgba(245,158,11,0.2); }
+        }
+        .spirit-profile-card .profile-avatar img {
+            width: 100%; height: 100%; object-fit: contain;
+        }
+        .spirit-profile-card .profile-name {
+            font-size: 20px; font-weight: 700; color: #333; margin-bottom: 4px;
+        }
+        .spirit-profile-card .profile-level {
+            font-size: 13px; color: #888; margin-bottom: 16px;
+        }
+        .spirit-profile-card .profile-stats-grid {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+        }
+        .spirit-profile-card .profile-stat-item {
+            padding: 8px; border-radius: 10px; background: #f8f9ff;
+        }
+        .spirit-profile-card .profile-stat-item .val {
+            font-size: 18px; font-weight: 700; color: #667eea;
+        }
+        .spirit-profile-card .profile-stat-item .label {
+            font-size: 11px; color: #999; margin-top: 2px;
+        }
+        .spirit-profile-card .profile-bar {
+            margin-top: 12px; text-align: left;
+        }
+        .spirit-profile-card .profile-bar .bar-label {
+            font-size: 12px; color: #888; margin-bottom: 4px; display: flex; justify-content: space-between;
+        }
+        .spirit-profile-card .profile-bar .bar-track {
+            height: 8px; border-radius: 4px; background: #eee; overflow: hidden;
+        }
+        .spirit-profile-card .profile-bar .bar-fill {
+            height: 100%; border-radius: 4px; transition: width 0.4s ease;
+        }
+        .bar-fill.exp { background: linear-gradient(90deg, #667eea, #764ba2); }
+        .bar-fill.sat { background: linear-gradient(90deg, #52c41a, #73d13d); }
+        .growth-log-item { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f8f8f8; align-items: center; font-size:13px; }
+        .growth-log-item:last-child { border-bottom: none; }
+        .growth-log-icon { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; background: #f0f5ff; }
+        .growth-log-body { flex: 1; min-width: 0; }
+        .growth-log-desc { font-size: 13px; font-weight: 500; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .growth-log-date { font-size: 10px; color: #bbb; }
+        .growth-log-exp { font-size: 12px; font-weight: 700; color: #667eea; white-space: nowrap; flex-shrink: 0; }
+        .growth-log-item.collapsed { display: none; }
+
+        /* ===== Spirit Animations ===== */
+        @keyframes spirit-breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+        @keyframes spirit-bounce {
+            0%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-14px); }
+            50% { transform: translateY(0); }
+            70% { transform: translateY(-6px); }
+            85% { transform: translateY(0); }
+        }
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            60% { opacity: 0.7; transform: translateY(-40px) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-70px) scale(1.4); }
+        }
+        @keyframes evolution-glow {
+            0% { box-shadow: 0 0 0 0 rgba(255,215,0,0); filter: brightness(1); }
+            40% { box-shadow: 0 0 50px 15px rgba(255,215,0,0.7); filter: brightness(1.8); }
+            100% { box-shadow: 0 0 0 0 rgba(255,215,0,0); filter: brightness(1); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-4px); }
+            40% { transform: translateX(4px); }
+            60% { transform: translateX(-3px); }
+            80% { transform: translateX(2px); }
+        }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(102,126,234,0.4); }
+            100% { box-shadow: 0 0 0 18px rgba(102,126,234,0); }
+        }
+        .spirit-avatar-wrap.breathing .spirit-avatar { animation: spirit-breathe 3s ease-in-out infinite; }
+        .spirit-avatar-wrap.bouncing .spirit-avatar { animation: spirit-bounce 0.6s ease-out; }
+        .spirit-avatar-wrap.shaking .spirit-avatar { animation: shake 0.5s ease-in-out; }
+        .spirit-avatar-wrap.evolving .spirit-avatar { animation: evolution-glow 1.5s ease-out; }
+        .spirit-avatar-wrap.pulse .spirit-avatar { animation: pulse-ring 1.5s ease-out infinite; }
+
+        .spirit-expression {
+            position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%);
+            font-size: 20px; pointer-events: none; z-index: 5;
+            transition: all 0.4s ease; background: rgba(255,255,255,0.85);
+            border-radius: 10px; padding: 1px 6px; white-space: nowrap;
+        }
+        .float-text {
+            position: absolute; z-index: 100; font-weight: 700; font-size: 16px;
+            pointer-events: none; animation: float-up 1.6s ease-out forwards;
+        }
+        .spirit-toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+            padding: 12px 24px; border-radius: 24px; font-size: 14px; font-weight: 500;
+            z-index: 9999; box-shadow: 0 4px 20px rgba(102,126,234,0.4);
+            animation: float-up 4s ease-out forwards;
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
+        }
+        .spirit-toast .toast-icon { font-size: 22px; }
+
+        /* Celebration overlay */
+        .celebrate-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 9998;
+            background: radial-gradient(circle, rgba(255,215,0,0.2) 0%, transparent 70%);
+            animation: evolution-glow 2s ease-out forwards;
+        }
+
+        @media (max-width: 768px) {
+            .companion-hero { flex-direction: column; text-align: center; }
+            .spirit-stats { justify-content: center; }
+            .hive-grid { grid-template-columns: 1fr; }
+            .prediction-compare { grid-template-columns: 1fr; }
+            .tab-nav { flex-wrap: wrap; }
+            .tab-btn { flex: 1 0 50%; font-size: 13px; padding: 12px 8px; }
+        }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('companion')"></div>
+
+    <div class="container" id="companion-app">
+        <!-- Spirit Hero -->
+        <div class="companion-hero" id="spirit-hero">
+            <div class="spirit-avatar-wrap breathing" id="spirit-avatar-wrap">
+                <div class="spirit-avatar" id="spirit-avatar">
+                    <div class="detail-ring"></div>
+                    <div class="detail-halo"></div>
+                    <div class="detail-wing left"></div>
+                    <div class="detail-wing right"></div>
+                    <div class="detail-crown">👑</div>
+                    <span id="spirit-avatar-emoji">🌱</span>
+                </div>
+                <div class="spirit-expression" id="spirit-expression"></div>
+            </div>
+            <div class="spirit-info">
+                <h2 id="spirit-name">小光</h2>
+                <div class="spirit-level">
+                    <span class="spirit-emotion" id="spirit-emotion">平静</span>
+                    <span style="margin-left:8px;opacity:0.7;" id="spirit-level-name">Lv.0 种子</span>
+                </div>
+            </div>
+            <div class="spirit-stats">
+                <div class="spirit-stat"><div class="spirit-stat-val" id="stat-exp">0</div><div class="spirit-stat-label">经验值</div></div>
+                <div class="spirit-stat"><div class="spirit-stat-val" id="stat-satiation">100</div><div class="spirit-stat-label">饱食度</div></div>
+                <div class="spirit-stat"><div class="spirit-stat-val" id="stat-streak">0</div><div class="spirit-stat-label">连续天数</div></div>
+            </div>
+        </div>
+
+        <!-- Tab Nav -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('spirit-tab', this)">🐣 精灵伙伴</button>
+            <button class="tab-btn" onclick="switchTab('feynman-tab', this)">🎓 费曼教学</button>
+            <button class="tab-btn" onclick="switchTab('timeline-tab', this)">🌳 时空预测</button>
+            <button class="tab-btn" onclick="switchTab('spirit-detail-tab', this)">✨ 精灵详情</button>
+        </div>
+
+        <!-- Tab: Spirit -->
+        <div class="tab-panel active" id="spirit-tab">
+            <div class="grid-layout">
+                <div class="card">
+                    <div class="card-header">💬 与精灵对话</div>
+                    <div class="card-body">
+                        <div class="chat-container" id="spirit-chat-container">
+                            <div class="chat-message ai">
+                                <div class="bubble" id="spirit-first-msg">嗨！我是你的AI学习精灵小光，和我聊聊天吧~</div>
+                            </div>
+                        </div>
+                        <div class="chat-input-container">
+                            <textarea id="spirit-chat-input" placeholder="和小光说点什么..." rows="1" onkeydown="handleSpiritChatKey(event)"></textarea>
+                            <button class="btn btn-primary" onclick="sendSpiritMessage()">发送</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        📜 成长日志
+                        <span style="font-size:12px;font-weight:400;color:#999;margin-left:8px;" id="growth-log-count"></span>
+                    </div>
+                    <div class="card-body" style="padding:8px 16px;max-height:360px;overflow-y:auto;" id="growth-log">
+                        <div class="empty-state"><div class="empty-icon">🌱</div><p>开始学习，见证精灵的成长吧</p></div>
+                    </div>
+                    <div class="card-footer" id="growth-log-footer" style="display:none;text-align:center;padding:8px;">
+                        <button class="btn btn-sm btn-outline" id="growth-log-toggle" onclick="toggleGrowthLog()">展开全部</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Feynman -->
+        <div class="tab-panel" id="feynman-tab">
+            <div class="card">
+                <div class="card-header">🎓 费曼反转教学 — 你来教，AI来学</div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>知识点ID</label>
+                            <input type="text" id="feynman-knowledge-id" placeholder="输入知识点，如 java-multithreading" value="java-basics">
+                        </div>
+                        <div class="form-group" style="display:flex;align-items:flex-end;">
+                            <button class="btn btn-primary" onclick="startFeynman()" id="feynman-start-btn">开始教学</button>
+                        </div>
+                    </div>
+                    <div class="feynman-flow" id="feynman-flow" style="display:none;">
+                        <div id="feynman-rounds"></div>
+                    </div>
+                    <div class="chat-input-container" id="feynman-input-area" style="display:none; margin-top:16px;">
+                        <textarea id="feynman-explain-input" placeholder="向AI解释这个知识点..." rows="2"></textarea>
+                        <button class="btn btn-primary" onclick="submitFeynmanExplanation()">提交解释</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Timeline -->
+        <div class="tab-panel" id="timeline-tab">
+            <div class="card card-full" style="margin-bottom:16px;">
+                <div class="card-header">
+                    🌳 我的知识树
+                    <span style="font-size:12px;font-weight:400;color:#999;margin-left:12px;">
+                        <span style="color:#52c41a;">●</span> 已掌握 &nbsp;
+                        <span style="color:#fa8c16;">●</span> 学习中 &nbsp;
+                        <span style="color:#ccc;">●</span> 需复习
+                    </span>
+                </div>
+                <div class="card-body" style="overflow-x:auto;min-height:400px;position:relative;">
+                    <div id="tree-canvas" style="min-width:600px;min-height:380px;position:relative;padding:20px 0;">
+                        <div class="empty-state" id="tree-empty"><div class="empty-icon">🌱</div><p>知识树尚未生长，完成学习计划来种下第一颗种子</p></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card card-full">
+                <div class="card-header">⚠️ 学习提醒</div>
+                <div class="card-body" id="warnings-container">
+                    <div class="empty-state"><div class="empty-icon">✅</div><p>一切正常，继续保持！</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Spirit Detail -->
+        <div class="tab-panel" id="spirit-detail-tab">
+            <!-- 精灵档案 -->
+            <div class="card" style="margin-bottom:16px;">
+                <div class="card-body spirit-profile-card">
+                    <div class="profile-avatar lv0" id="detail-avatar">🌱</div>
+                    <div class="profile-name" id="detail-name">小光</div>
+                    <div class="profile-level" id="detail-level">Lv.0 种子</div>
+                    <div class="profile-stats-grid">
+                        <div class="profile-stat-item"><div class="val" id="detail-exp">0</div><div class="label">经验值</div></div>
+                        <div class="profile-stat-item"><div class="val" id="detail-satiation">100</div><div class="label">饱食度</div></div>
+                        <div class="profile-stat-item"><div class="val" id="detail-emotion">平静</div><div class="label">情感</div></div>
+                    </div>
+                    <div class="profile-bar">
+                        <div class="bar-label"><span>经验进度</span><span id="detail-exp-text">0 / 100</span></div>
+                        <div class="bar-track"><div class="bar-fill exp" id="detail-exp-bar" style="width:0%"></div></div>
+                    </div>
+                    <div class="profile-bar" style="margin-top:8px;">
+                        <div class="bar-label"><span>饱食度</span><span id="detail-sat-text">100 / 100</span></div>
+                        <div class="bar-track"><div class="bar-fill sat" id="detail-satiation-bar" style="width:100%"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 外形选择 -->
+            <div class="card" style="margin-bottom:16px;">
+                <div class="card-header">🎨 选择外形</div>
+                <div class="card-body">
+                    <div style="font-size:12px;color:#999;margin-bottom:12px;">选择已解锁的精灵外形，每个等级都有独特的形象</div>
+                    <div class="appearance-selector" id="appearance-selector">
+                        <!-- 动态填充 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 个性化 -->
+            <div class="card" style="margin-bottom:16px;">
+                <div class="card-header">✏️ 个性化</div>
+                <div class="card-body">
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:12px;color:#999;margin-bottom:6px;">当前性格</div>
+                        <div id="detail-personality" style="font-size:14px;font-weight:600;">-</div>
+                    </div>
+                    <div class="form-row" style="margin-bottom:12px;">
+                        <input type="text" id="rename-input" placeholder="给精灵起个新名字" style="flex:1;">
+                        <button class="btn btn-primary btn-sm" onclick="renameSpirit()">改名</button>
+                    </div>
+                    <div class="form-row">
+                        <button class="btn btn-outline btn-sm" onclick="manualFeed()" style="width:100%;">🍎 手动喂养 (+10exp)</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 记忆 -->
+            <div class="card">
+                <div class="card-header">🧠 记忆</div>
+                <div class="card-body" id="spirit-memory">
+                    <div style="font-size:13px;color:#888;margin-bottom:8px;">
+                        上次互动: <span id="mem-last-interact">-</span>
+                    </div>
+                    <div style="font-size:13px;font-weight:600;margin-bottom:4px;">最近话题</div>
+                    <div id="mem-topics" style="margin-bottom:12px;">-</div>
+                    <div style="font-size:13px;font-weight:600;margin-bottom:4px;">学习偏好</div>
+                    <div id="mem-preferences">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:replace="fragments :: footer"></div>
+
+    <script>
+        var COMPANION_API = 'http://localhost:8087/api/companion';
+        var currentUserId = 1;
+        var feynmanSessionId = null;
+        var spiritChatSessionId = null;
+
+        // ===== Init =====
+        document.addEventListener('DOMContentLoaded', function() {
+            var user = JellyStudyApp.getUser();
+            if (user && user.id) currentUserId = user.id;
+            loadSpiritState();
+            showProactiveReminder();
+        });
+
+        // ===== Tab Switch =====
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+            btn.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+
+            if (tabId === 'timeline-tab') loadTimeline();
+            if (tabId === 'spirit-detail-tab') loadSpiritDetail();
+        }
+
+        // ===== Spirit =====
+        function loadSpiritState() {
+            axios.get(COMPANION_API + '/spirit/state', { params: { userId: currentUserId } })
+                .then(function(res) {
+                    if (res.data.code === 200 && res.data.data) {
+                        renderSpirit(res.data.data);
+                    }
+                }).catch(function(err) { console.error('加载精灵状态失败:', err); });
+
+            // 加载仪表盘数据获取连续天数
+            axios.get(COMPANION_API + '/spirit/dashboard', { params: { userId: currentUserId } })
+                .then(function(res) {
+                    if (res.data.code === 200 && res.data.data) {
+                        document.getElementById('stat-streak').textContent = res.data.data.streakDays || 0;
+                    }
+                }).catch(function(err) { console.error('加载仪表盘数据失败:', err); });
+        }
+
+        // Track previous level for evolution detection
+        var _prevSpiritLevel = -1;
+        var _allGrowthLogs = [];       // all log entries
+        var _growthLogExpanded = false; // collapsed by default
+
+        function renderSpirit(s) {
+            document.getElementById('spirit-name').textContent = s.name || '小光';
+            document.getElementById('spirit-level-name').textContent = 'Lv.' + (s.level || 0) + ' ' + (s.levelName || '种子');
+            document.getElementById('stat-exp').textContent = s.experience || 0;
+            document.getElementById('stat-satiation').textContent = s.satiation || 100;
+            document.getElementById('spirit-emotion').textContent = emotionLabel(s.emotion);
+
+            // Emotion expression
+            var exprEl = document.getElementById('spirit-expression');
+            var exprMap = { EXCITED: '🤩', HAPPY: '😊', CALM: '🙂', HUNGRY: '😟', SLEEPING: '😴' };
+            if (exprEl) exprEl.textContent = exprMap[s.emotion] || '🙂';
+
+            // Avatar breathing animation class
+            var wrap = document.getElementById('spirit-avatar-wrap');
+            if (wrap) {
+                wrap.classList.remove('breathing', 'bouncing', 'shaking', 'evolving', 'pulse');
+                if (s.emotion === 'SLEEPING') wrap.classList.add('pulse');
+                else wrap.classList.add('breathing');
+            }
+
+            var level = s.level || 0;
+            var displayLevel = s.appearanceLevel != null ? s.appearanceLevel : level;
+            var avatarEl = document.getElementById('spirit-avatar');
+            // Set level class for CSS effects
+            avatarEl.className = 'spirit-avatar lv' + Math.min(displayLevel, 5);
+            // Update emoji
+            var emojiEl = document.getElementById('spirit-avatar-emoji');
+            var levelEmojis = ['🌱', '🌿', '🦋', '🔥', '🌟', '👑'];
+            if (emojiEl) emojiEl.textContent = levelEmojis[Math.min(displayLevel, 5)];
+            // Re-add inner decorations
+            if (!avatarEl.querySelector('.detail-ring')) {
+                avatarEl.innerHTML = '<div class="detail-ring"></div><div class="detail-halo"></div><div class="detail-wing left"></div><div class="detail-wing right"></div><div class="detail-crown">👑</div><span id="spirit-avatar-emoji">' + levelEmojis[Math.min(displayLevel, 5)] + '</span>';
+            }
+            if (s.emotion === 'SLEEPING') {
+                avatarEl.classList.add('sleeping');
+            }
+
+            // Evolution detection
+            if (_prevSpiritLevel >= 0 && level > _prevSpiritLevel) {
+                celebrateEvolution(level, s.levelName);
+            }
+            _prevSpiritLevel = level;
+
+            // ===== Growth Log: store all, show collapsed =====
+            _allGrowthLogs = (s.growthLog && s.growthLog.length > 0)
+                ? s.growthLog.slice().reverse()
+                : [];
+            _growthLogExpanded = false;
+            renderGrowthLog();
+        }
+
+        function renderGrowthLog() {
+            var container = document.getElementById('growth-log');
+            var footer = document.getElementById('growth-log-footer');
+            var countEl = document.getElementById('growth-log-count');
+            var toggleBtn = document.getElementById('growth-log-toggle');
+
+            if (_allGrowthLogs.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">🌱</div><p>开始学习，见证精灵的成长吧</p></div>';
+                if (footer) footer.style.display = 'none';
+                if (countEl) countEl.textContent = '';
+                return;
+            }
+
+            // Count badge
+            if (countEl) countEl.textContent = '共' + _allGrowthLogs.length + '条';
+
+            var VISIBLE = 5;
+            var showAll = _growthLogExpanded;
+            var visibleLogs = showAll ? _allGrowthLogs : _allGrowthLogs.slice(0, VISIBLE);
+
+            var html = visibleLogs.map(function(g) {
+                var icon = growthEventIcon(g.event);
+                var desc = (g.detail || g.event || '');
+                // Truncate long descriptions when collapsed
+                if (!showAll && desc.length > 28) desc = desc.substring(0, 26) + '…';
+                var expStr = (g.expGained && g.expGained > 0) ? '<span class="growth-log-exp">+' + g.expGained + '</span>' : '';
+                var dateStr = (g.date || '');
+                // Show shorter date format
+                if (dateStr.length > 10) dateStr = dateStr.substring(5, 16);
+                return '<div class="growth-log-item">' +
+                    '<div class="growth-log-icon">' + icon + '</div>' +
+                    '<div class="growth-log-body">' +
+                        '<div class="growth-log-desc" title="' + escapeHtml(g.detail || g.event || '') + '">' + escapeHtml(desc) + '</div>' +
+                        '<div class="growth-log-date">' + dateStr + '</div>' +
+                    '</div>' + expStr +
+                '</div>';
+            }).join('');
+
+            container.innerHTML = html;
+
+            // Footer toggle button
+            if (_allGrowthLogs.length > VISIBLE) {
+                if (footer) footer.style.display = 'block';
+                if (toggleBtn) toggleBtn.textContent = showAll ? '收起 ▲' : '展开全部 (' + _allGrowthLogs.length + '条) ▼';
+            } else {
+                if (footer) footer.style.display = 'none';
+            }
+        }
+
+        function toggleGrowthLog() {
+            _growthLogExpanded = !_growthLogExpanded;
+            renderGrowthLog();
+            // Scroll to top of log when collapsing
+            if (!_growthLogExpanded) {
+                document.getElementById('growth-log').scrollTop = 0;
+            }
+        }
+
+        // ===== Spirit Detail =====
+        function loadSpiritDetail() {
+            axios.get(COMPANION_API + '/spirit/state', { params: { userId: currentUserId } })
+                .then(function(res) {
+                    if (res.data.code === 200 && res.data.data) {
+                        renderSpiritDetail(res.data.data);
+                    }
+                }).catch(function(err) { console.error('加载精灵详情失败:', err); });
+        }
+
+        function renderSpiritDetail(s) {
+            var level = s.level || 0;
+
+            // Profile card
+            document.getElementById('detail-name').textContent = s.name || '小光';
+            document.getElementById('detail-level').textContent = 'Lv.' + level + ' ' + (s.levelName || '种子');
+            document.getElementById('detail-exp').textContent = s.experience || 0;
+            document.getElementById('detail-satiation').textContent = s.satiation || 100;
+            document.getElementById('detail-emotion').textContent = emotionLabel(s.emotion);
+
+            // Avatar
+            var displayLevel = s.appearanceLevel != null ? s.appearanceLevel : level;
+            var avatarEl = document.getElementById('detail-avatar');
+            if (avatarEl) {
+                var levelEmojis = ['🌱', '🌿', '🦋', '🔥', '🌟', '👑'];
+                var lv = Math.min(displayLevel, 5);
+                avatarEl.className = 'profile-avatar lv' + lv;
+                avatarEl.textContent = levelEmojis[lv];
+            }
+
+            // Exp bar
+            var nextExp = s.nextLevelExp || 100;
+            var expPct = nextExp > 0 ? Math.min(100, ((s.experience || 0) / nextExp) * 100) : 0;
+            document.getElementById('detail-exp-bar').style.width = expPct + '%';
+            document.getElementById('detail-exp-text').textContent = (s.experience || 0) + ' / ' + nextExp;
+
+            // Satiation bar
+            var sat = s.satiation || 100;
+            document.getElementById('detail-satiation-bar').style.width = sat + '%';
+            document.getElementById('detail-sat-text').textContent = sat + ' / 100';
+
+            // Rename input
+            document.getElementById('rename-input').value = s.name || '';
+
+            // Personality
+            var personalityNames = { warm: '⭐ 小光 - 温暖好奇', tsundere: '😏 小傲 - 傲娇毒舌', scholar: '🎓 小博 - 严谨博学', lively: '🍯 小蜂 - 活泼调皮', cool: '😎 小酷 - 酷酷极简' };
+            var pKey = s.personalityKey || 'warm';
+            document.getElementById('detail-personality').textContent = personalityNames[pKey] || pKey;
+
+            // Appearance selector
+            var levelData = [
+                { level: 0, name: '种子', desc: '💧 冰蓝微光，萌芽初现' },
+                { level: 1, name: '芽苗', desc: '🌿 翠绿生机，叶舞轻摇' },
+                { level: 2, name: '幼灵', desc: '🦋 紫翼灵动，幻彩初现' },
+                { level: 3, name: '成灵', desc: '🔥 炽焰光辉，能量环绕' },
+                { level: 4, name: '精灵使', desc: '🌟 星辰圣光，光环加冕' },
+                { level: 5, name: '贤者', desc: '👑 宇宙至尊，金耀天下' }
+            ];
+            var selectorEl = document.getElementById('appearance-selector');
+            var selectedLevel = s.appearanceLevel != null ? s.appearanceLevel : level;
+
+            var html = '';
+            for (var i = 0; i < levelData.length; i++) {
+                var ld = levelData[i];
+                var unlocked = ld.level <= level;
+                var isSelected = ld.level === selectedLevel;
+                var cls = 'appearance-option';
+                if (!unlocked) cls += ' locked';
+                if (isSelected) cls += ' selected';
+
+                html += '<div class="' + cls + '" data-level="' + ld.level + '"';
+                if (unlocked) html += ' onclick="switchAppearance(' + ld.level + ')"';
+                html += '>';
+                if (isSelected) html += '<span class="current-badge">当前</span>';
+                if (!unlocked) html += '<span class="lock-badge">🔒</span>';
+                html += '<div class="level-img"><img src="/images/spirit-level-' + ld.level + '.png" alt="' + ld.name + '"></div>';
+                html += '<div class="level-label">Lv.' + ld.level + '</div>';
+                html += '<div class="level-name">' + ld.name + '</div>';
+                html += '</div>';
+            }
+            selectorEl.innerHTML = html;
+
+            // Memory
+            var mem = s.memory || {};
+            document.getElementById('mem-last-interact').textContent = mem.lastInteraction ? mem.lastInteraction.substring(0, 16) : '-';
+            var topics = mem.recentTopics || [];
+            document.getElementById('mem-topics').innerHTML = topics.length > 0 ? topics.map(function(t) { return '<span class="skill-tag unlocked" style="font-size:11px;">' + escapeHtml(t) + '</span>'; }).join('') : '<span style="color:#ccc;">暂无</span>';
+            var prefs = mem.userPreferences || [];
+            document.getElementById('mem-preferences').innerHTML = prefs.length > 0 ? prefs.map(function(p) { return '<span class="skill-tag unlocked" style="font-size:11px;">' + escapeHtml(p) + '</span>'; }).join('') : '<span style="color:#ccc;">暂无</span>';
+        }
+
+        function switchAppearance(targetLevel) {
+            axios.post(COMPANION_API + '/spirit/appearance', null, { params: { userId: currentUserId, targetLevel: targetLevel } })
+                .then(function(res) {
+                    if (res.data.code === 200 && res.data.data) {
+                        renderSpiritDetail(res.data.data);
+                        loadSpiritState();
+                        showSpiritToast('🎨', '外形已切换！', 3000);
+                    }
+                }).catch(function(err) {
+                    alert('切换外形失败：' + (err.response && err.response.data && err.response.data.message || '未知错误'));
+                });
+        }
+
+        function renameSpirit() {
+            var newName = document.getElementById('rename-input').value.trim();
+            if (!newName) { alert('请输入新名字'); return; }
+            axios.post(COMPANION_API + '/spirit/rename', null, { params: { userId: currentUserId, newName: newName } })
+                .then(function(res) {
+                    if (res.data.code === 200) {
+                        alert('精灵已改名为「' + newName + '」！');
+                        loadSpiritState();
+                        loadSpiritDetail();
+                    }
+                }).catch(function(err) { alert('改名失败'); });
+        }
+
+        function manualFeed() {
+            // 记录当前等级用于检测进化
+            var prevLevel = _prevSpiritLevel;
+
+            // Float animation
+            floatExpText('+10 exp', '#764ba2');
+
+            // Bounce animation
+            var wrap = document.getElementById('spirit-avatar-wrap');
+            if (wrap) { wrap.classList.remove('bouncing'); void wrap.offsetWidth; wrap.classList.add('bouncing'); }
+
+            // API call
+            axios.post(COMPANION_API + '/spirit/feed', null, { params: { userId: currentUserId, eventType: 'manual_feed', feedValue: 10 } })
+                .then(function(res) {
+                    if (res.data.code === 200 && res.data.data) {
+                        var s = res.data.data;
+                        // 检测等级变化
+                        if (s.level > prevLevel) {
+                            celebrateEvolution(s.level, s.levelName || '未知');
+                        }
+                        loadSpiritState();  // Full refresh to sync backend
+                        loadSpiritDetail();
+                    }
+                }).catch(function(err) {
+                    showSpiritToast('❌', '喂食失败，请重试', 3000);
+                });
+        }
+
+        /** Floating +exp text animation */
+        function floatExpText(text, color) {
+            var avatar = document.getElementById('spirit-avatar-wrap');
+            if (!avatar) return;
+            var rect = avatar.getBoundingClientRect();
+            var el = document.createElement('div');
+            el.className = 'float-text';
+            el.textContent = text;
+            el.style.cssText = 'left:' + (rect.left + rect.width/2 - 30) + 'px;top:' + (rect.top - 10) + 'px;color:' + (color || '#667eea') + ';';
+            document.body.appendChild(el);
+            setTimeout(function() { el.remove(); }, 1700);
+        }
+
+        /** Show a toast notification from the spirit */
+        function showSpiritToast(icon, message, duration) {
+            var toast = document.createElement('div');
+            toast.className = 'spirit-toast';
+            toast.innerHTML = '<span class="toast-icon">' + icon + '</span>' + escapeHtml(message);
+            toast.onclick = function() { toast.remove(); };
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.remove(); }, duration || 5000);
+        }
+
+        /** Evolution celebration */
+        function celebrateEvolution(newLevel, levelName) {
+            // Fullscreen glow overlay
+            var overlay = document.createElement('div');
+            overlay.className = 'celebrate-overlay';
+            document.body.appendChild(overlay);
+            setTimeout(function() { overlay.remove(); }, 2200);
+
+            // Bounce + glow the avatar
+            var wrap = document.getElementById('spirit-avatar-wrap');
+            if (wrap) {
+                wrap.classList.remove('breathing', 'bouncing');
+                void wrap.offsetWidth;
+                wrap.classList.add('evolving');
+                setTimeout(function() { wrap.classList.remove('evolving'); wrap.classList.add('breathing'); }, 1600);
+            }
+
+            // Toast
+            showSpiritToast('🎉', '我进化了！升级为 ' + levelName + ' (Lv.' + newLevel + ')', 5000);
+
+            // Float text from avatar
+            setTimeout(function() { floatExpText('⬆ Lv.' + newLevel + '!', '#ff8c00'); }, 400);
+        }
+
+        /** Proactive reminder — called on page load */
+        function showProactiveReminder() {
+            axios.get(COMPANION_API + '/spirit/dashboard', { params: { userId: currentUserId } })
+                .then(function(res) {
+                    if (res.data.code !== 200 || !res.data.data) return;
+                    var d = res.data.data;
+                    var spirit = d.spirit;
+                    var streakDays = d.streakDays || 0;
+                    var studiedToday = d.studiedToday;
+                    var grayNodes = d.grayNodesCount || 0;
+                    var satiation = spirit ? spirit.satiation : 100;
+
+                    // Priority: hungry > gray nodes > not studied today > streak celebration
+                    var msg = null;
+                    if (satiation < 30) {
+                        msg = { icon: '😢', text: '我好饿... 完成一个学习任务来喂我吧！' };
+                    } else if (grayNodes > 3) {
+                        msg = { icon: '⚠️', text: '有 ' + grayNodes + ' 个知识点需要复习了，去看看知识树？' };
+                    } else if (!studiedToday) {
+                        msg = { icon: '📚', text: '今天还没开始学习哦，要不要现在开始？' };
+                    } else if (streakDays >= 7) {
+                        msg = { icon: '🔥', text: '连续学习第 ' + streakDays + ' 天！你太厉害了！' };
+                    } else if (streakDays >= 3) {
+                        msg = { icon: '⭐', text: '已连续学习 ' + streakDays + ' 天，继续加油！' };
+                    } else if (studiedToday) {
+                        msg = { icon: '👋', text: '今天学得不错，继续保持这个节奏！' };
+                    }
+
+                    if (msg) {
+                        setTimeout(function() { showSpiritToast(msg.icon, msg.text, 6000); }, 1500);
+                    }
+                }).catch(function(err) { console.error('获取提醒数据失败:', err); });
+        }
+
+        function growthEventIcon(eventName) {
+            var map = { 'TASK_COMPLETED':'📝', 'STAGE_COMPLETED':'🏆', 'PLAN_COMPLETED':'🎉', 'DAILY_STREAK':'🔥', 'LEVEL_UP':'⬆️', 'SKILL_UNLOCKED':'✨', 'MILESTONE_REACHED':'🎯', 'AWAKENED':'💤', 'MANUAL_FEED':'🍎' };
+            return map[eventName] || '📌';
+        }
+
+        function sendSpiritMessage() {
+            var input = document.getElementById('spirit-chat-input');
+            var msg = input.value.trim();
+            if (!msg) return;
+
+            var container = document.getElementById('spirit-chat-container');
+            appendChatBubble(container, msg, 'user');
+            input.value = '';
+
+            axios.post(COMPANION_API + '/spirit/chat', {
+                userId: currentUserId, sessionId: spiritChatSessionId, message: msg
+            }).then(function(res) {
+                if (res.data.code === 200 && res.data.data) {
+                    spiritChatSessionId = res.data.data.sessionId;
+                    appendChatBubble(container, res.data.data.spiritMessage, 'ai');
+                }
+            }).catch(function(err) {
+                appendChatBubble(container, '抱歉，我现在有点迷糊...', 'ai');
+            });
+        }
+
+        function handleSpiritChatKey(e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendSpiritMessage(); }
+        }
+
+        function appendChatBubble(container, text, role) {
+            var div = document.createElement('div');
+            div.className = 'chat-message ' + role;
+            div.innerHTML = '<div class="bubble">' + escapeHtml(text) + '</div>';
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // ===== Feynman =====
+        function startFeynman() {
+            var knowledgeId = document.getElementById('feynman-knowledge-id').value.trim();
+            if (!knowledgeId) { alert('请输入知识点ID'); return; }
+
+            var btn = document.getElementById('feynman-start-btn');
+            btn.disabled = true; btn.textContent = '创建中...';
+
+            axios.post(COMPANION_API + '/feynman/start', { userId: currentUserId, knowledgeId: knowledgeId })
+                .then(function(res) {
+                    if (res.data.code === 200 && res.data.data) {
+                        feynmanSessionId = res.data.data.sessionId;
+                        document.getElementById('feynman-flow').style.display = 'block';
+                        document.getElementById('feynman-input-area').style.display = 'flex';
+                        addFeynmanRound(res.data.data.aiQuestion, 'spirit', 0);
+                        btn.textContent = '重新开始';
+                        btn.disabled = false;
+                    }
+                }).catch(function(err) {
+                    alert('创建教学会话失败'); btn.disabled = false; btn.textContent = '开始教学';
+                });
+        }
+
+        function submitFeynmanExplanation() {
+            var input = document.getElementById('feynman-explain-input');
+            var explanation = input.value.trim();
+            if (!explanation || !feynmanSessionId) return;
+
+            addFeynmanRound(explanation, 'user', null);
+            input.value = '';
+
+            axios.post(COMPANION_API + '/feynman/respond', { sessionId: feynmanSessionId, userExplanation: explanation })
+                .then(function(res) {
+                    if (res.data.code === 200 && res.data.data) {
+                        var d = res.data.data;
+                        if (d.aiQuestion) {
+                            addFeynmanRound(d.aiQuestion, 'spirit', d.assessment);
+                        }
+                        if (d.spiritReaction) {
+                            addFeynmanRound(d.spiritReaction, 'spirit', null);
+                        }
+                        // ===== 精灵实时反应 =====
+                        if (d.assessment && window.SpiritNotify) {
+                            var overallScore = d.assessment.overallScore || 0;
+                            SpiritNotify.reactToAnswer(overallScore, d.spiritReaction || null);
+                        }
+                        if (d.sessionComplete) {
+                            document.getElementById('feynman-input-area').style.display = 'none';
+                            addFeynmanRound('🎉 本轮教学结束！你对这个知识点的理解又加深了。', 'spirit', null);
+                            feynmanSessionId = null;
+                        }
+                    }
+                }).catch(function(err) { console.error('提交解释失败:', err); });
+        }
+
+        function addFeynmanRound(text, role, assessment) {
+            var rounds = document.getElementById('feynman-rounds');
+            var div = document.createElement('div');
+            div.className = 'feynman-round';
+
+            var avClass = role === 'spirit' ? 'spirit-av' : 'user-av';
+            var avIcon = role === 'spirit' ? '🦊' : '👤';
+            var msgClass = role === 'spirit' ? 'spirit-msg' : 'user-msg';
+            var label = role === 'spirit' ? '精灵' : '你';
+
+            var html = '<div class="avatar ' + avClass + '">' + avIcon + '</div>';
+            html += '<div class="msg ' + msgClass + '">';
+            html += '<div class="meta">' + label + '</div>';
+            html += '<div>' + escapeHtml(text) + '</div>';
+
+            if (assessment) {
+                html += '<div class="assessment-bar">';
+                var dims = [
+                    { key: 'accuracy', name: '准确性', v: assessment.accuracy || 0 },
+                    { key: 'completeness', name: '完整性', v: assessment.completeness || 0 },
+                    { key: 'depth', name: '深度', v: assessment.depth || 0 },
+                    { key: 'clarity', name: '清晰度', v: assessment.clarity || 0 },
+                    { key: 'abilityToExample', name: '举例能力', v: assessment.abilityToExample || 0 }
+                ];
+                dims.forEach(function(d) {
+                    var pct = Math.round(d.v * 100);
+                    var cls = pct >= 80 ? 'high' : pct >= 50 ? 'mid' : 'low';
+                    html += '<div class="assessment-dim"><div class="dim-name">' + d.name + ' ' + pct + '%</div><div class="dim-bar"><div class="dim-fill ' + cls + '" style="width:' + pct + '%"></div></div></div>';
+                });
+                html += '</div>';
+            }
+
+            html += '</div>';
+            div.innerHTML = html;
+            rounds.appendChild(div);
+            rounds.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        // ===== Timeline / Knowledge Tree =====
+        function loadTimeline() {
+            axios.get(COMPANION_API + '/timeline/tree', { params: { userId: currentUserId } })
+                .then(function(res) {
+                    if (res.data.code === 200 && res.data.data) drawTree(res.data.data);
+                }).catch(function(err) { console.error('加载知识树失败:', err); });
+
+            axios.get(COMPANION_API + '/timeline/warnings', { params: { userId: currentUserId } })
+                .then(function(res) {
+                    if (res.data.code === 200 && res.data.data) renderWarnings(res.data.data);
+                }).catch(function(err) { console.error('加载预警失败:', err); });
+        }
+
+        // ===== Plan-centric Knowledge Tree =====
+        var V_GAP = 100;     // 垂直间距
+        var KP_SLOT = 90;    // 知识点节点宽度
+        var STAGE_SLOT = 120; // 阶段节点最小宽度
+        var PLAN_SLOT = 160;  // 计划节点最小宽度
+        var SIB_GAP = 16;     // 同级节点间距
+
+        function drawTree(data) {
+            var canvas = document.getElementById('tree-canvas');
+            canvas.innerHTML = '';
+            var emptyEl = document.getElementById('tree-empty');
+
+            if (!data.branches || data.branches.length === 0) {
+                if (emptyEl) emptyEl.style.display = 'block';
+                return;
+            }
+            if (emptyEl) emptyEl.style.display = 'none';
+
+            var W = Math.max(800, canvas.parentElement.clientWidth - 40);
+
+            // ===== 1. 构建树结构: Root → Plans → Stages → KPs =====
+            var root = { name: '我的学习体系', type: 'ROOT', progress: 1, children: [] };
+
+            data.branches.forEach(function(branch) {
+                var plan = {
+                    name: branch.name, type: 'PLAN',
+                    planId: branch.planId, planStatus: branch.planStatus,
+                    description: branch.description,
+                    progress: branch.progress || 0,
+                    children: []
+                };
+                if (branch.nodes) {
+                    branch.nodes.forEach(function(stage) {
+                        var stg = {
+                            name: stage.name, type: 'STAGE',
+                            nodeId: stage.nodeId, status: stage.status,
+                            progress: stage.mastery || 0,
+                            children: []
+                        };
+                        if (stage.children) {
+                            stage.children.forEach(function(kp) {
+                                stg.children.push({
+                                    name: kp.name, type: 'KP',
+                                    progress: kp.mastery || 0,
+                                    lastReview: kp.lastReview,
+                                    status: kp.status
+                                });
+                            });
+                        }
+                        plan.children.push(stg);
+                    });
+                }
+                root.children.push(plan);
+            });
+
+            // ===== 2. 计算每个节点的子树宽度 =====
+            function subtreeWidth(node) {
+                if (node.type === 'KP') return KP_SLOT;
+                if (node.type === 'STAGE') {
+                    if (!node.children || node.children.length === 0) return STAGE_SLOT;
+                    var w = 0;
+                    node.children.forEach(function(c) { w += subtreeWidth(c); });
+                    return Math.max(STAGE_SLOT, w + (node.children.length - 1) * SIB_GAP);
+                }
+                if (node.type === 'PLAN') {
+                    if (!node.children || node.children.length === 0) return PLAN_SLOT;
+                    var w = 0;
+                    node.children.forEach(function(c) { w += subtreeWidth(c); });
+                    return Math.max(PLAN_SLOT, w + (node.children.length - 1) * SIB_GAP);
+                }
+                // ROOT
+                var w = 0;
+                node.children.forEach(function(c) { w += subtreeWidth(c); });
+                return Math.max(140, w + (node.children.length - 1) * SIB_GAP * 2);
+            }
+
+            // ===== 3. 计算深度和画布高度 =====
+            var maxDepth = 0;
+            (function calcDepth(node, d) {
+                maxDepth = Math.max(maxDepth, d);
+                if (node.children) node.children.forEach(function(c) { calcDepth(c, d + 1); });
+            })(root, 0);
+
+            var H = maxDepth * V_GAP + 200;
+            canvas.style.height = Math.max(450, H) + 'px';
+            var rootY = Math.max(380, H) - 30;
+
+            // ===== 4. 自顶向下计算坐标 =====
+            root.x = W / 2;
+            root.y = rootY;
+            root._w = subtreeWidth(root);
+
+            function layoutChildren(node) {
+                if (!node.children || node.children.length === 0) return;
+                var children = node.children;
+                var totalW = 0;
+                children.forEach(function(c) { c._w = subtreeWidth(c); totalW += c._w; });
+                totalW += (children.length - 1) * SIB_GAP;
+
+                var startX = node.x - totalW / 2;
+                var curX = startX;
+                var childY = node.y - V_GAP;
+
+                children.forEach(function(c) {
+                    c.x = curX + c._w / 2;
+                    c.y = childY;
+                    curX += c._w + SIB_GAP;
+                    layoutChildren(c);
+                });
+            }
+            layoutChildren(root);
+
+            // ===== 5. 节点颜色判定 =====
+            function nodeClass(node) {
+                var p = node.progress || 0;
+                if (node.type === 'KP') {
+                    var daysSince = node.lastReview ? Math.floor((new Date() - new Date(node.lastReview)) / 86400000) : 999;
+                    if (p >= 0.8 && daysSince <= 7) return 'mastered';
+                    if (p >= 0.3 && daysSince <= 14) return 'learning';
+                    return 'stale';
+                }
+                if (p >= 0.8) return 'mastered';
+                if (p >= 0.3) return 'learning';
+                return 'stale';
+            }
+
+            // ===== 6. 递归渲染 =====
+            function renderNode(node) {
+                var el, sz, cls, html;
+
+                if (node.type === 'ROOT') {
+                    sz = 72;
+                    el = makeEl(node.x - sz/2, node.y - sz/2);
+                    el.innerHTML = '<div class="tree-node-dot mastered" style="width:' + sz + 'px;height:' + sz + 'px;font-size:33px;border-color:#0f88eb;background:linear-gradient(135deg,#e6f7ff,#bae7ff);border-radius:50%;">🌳</div><div class="tree-node-label" style="font-weight:700;font-size:14px;">我的学习体系</div>';
+                } else if (node.type === 'PLAN') {
+                    sz = 62; cls = nodeClass(node);
+                    var badge = node.planStatus === 'COMPLETED' ? ' ✅' : (node.planStatus === 'IN_PROGRESS' ? ' 🔄' : '');
+                    var desc = node.description ? node.description.substring(0, 20) : '';
+                    el = makeEl(node.x - sz/2, node.y - sz/2);
+                    el.innerHTML = '<div class="tree-node-dot ' + cls + '" style="width:' + sz + 'px;height:' + sz + 'px;font-size:26px;border-radius:14px;">📋</div><div class="tree-node-label" style="font-weight:600;max-width:120px;font-size:13px;">' + escapeHtml(node.name) + badge + '<br><span style="font-size:10px;color:#888;">' + desc + '</span><br><span style="font-size:10px;color:' + (cls === 'stale' ? '#bbb' : '#888') + ';">📊 ' + Math.round(node.progress * 100) + '%</span></div>';
+                } else if (node.type === 'STAGE') {
+                    sz = 50; cls = nodeClass(node);
+                    el = makeEl(node.x - sz/2, node.y - sz/2);
+                    el.innerHTML = '<div class="tree-node-dot ' + cls + '" style="width:' + sz + 'px;height:' + sz + 'px;font-size:20px;border-radius:11px;">📌</div><div class="tree-node-label" style="font-size:12px;max-width:100px;">' + escapeHtml(node.name) + '<br><span style="font-size:10px;color:#888;">' + Math.round(node.progress * 100) + '%</span></div>';
+                } else if (node.type === 'KP') {
+                    sz = 42; cls = nodeClass(node);
+                    var icon = cls === 'mastered' ? '●' : cls === 'learning' ? '◐' : '○';
+                    var staleLabel = cls === 'stale' ? ' 需复习' : '';
+                    var labelCls = cls === 'stale' ? ' stale' : '';
+                    el = makeEl(node.x - sz/2, node.y - sz/2);
+                    el.innerHTML = '<div class="tree-node-dot ' + cls + '" style="width:' + sz + 'px;height:' + sz + 'px;font-size:18px;">' + icon + '</div><div class="tree-node-label' + labelCls + '" style="font-size:11px;max-width:80px;">' + escapeHtml(node.name) + '<br><span style="font-size:9px;color:' + (cls === 'stale' ? '#bbb' : '#999') + ';">' + Math.round(node.progress * 100) + '%' + staleLabel + '</span></div>';
+                }
+
+                canvas.appendChild(el);
+
+                // 递归子节点 + 连线
+                if (node.children) {
+                    node.children.forEach(function(child) {
+                        var pBottom = node.y + (node.type === 'ROOT' ? 36 : (node.type === 'PLAN' ? 31 : 25));
+                        var cTop = child.y - (child.type === 'PLAN' ? 31 : (child.type === 'STAGE' ? 25 : 21));
+                        drawConnector(canvas, node.x, pBottom, child.x, cTop, nodeClass(child) === 'stale');
+                        renderNode(child);
+                    });
+                }
+            }
+
+            function makeEl(x, y) {
+                var div = document.createElement('div');
+                div.className = 'tree-node-el';
+                div.style.cssText = 'left:' + x + 'px;top:' + y + 'px;';
+                return div;
+            }
+
+            renderNode(root);
+        }
+
+        function drawConnector(canvas, x1, y1, x2, y2, isStale) {
+            var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('style', 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:1;');
+            svg.setAttribute('width', canvas.clientWidth);
+            svg.setAttribute('height', canvas.clientHeight);
+
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            var midY = (y1 + y2) / 2;
+            var d = 'M' + x1 + ',' + y1 + ' C' + x1 + ',' + midY + ' ' + x2 + ',' + midY + ' ' + x2 + ',' + y2;
+            path.setAttribute('d', d);
+            path.setAttribute('stroke', isStale ? '#e0e0e0' : '#b0b0b0');
+            path.setAttribute('stroke-width', isStale ? '1.5' : '2');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(path);
+            canvas.appendChild(svg);
+        }
+
+        function renderWarnings(warnings) {
+            if (!warnings || warnings.length === 0) return;
+            var html = '';
+            warnings.forEach(function(w) {
+                var cls = w.severity === 'CRITICAL' ? 'critical' : w.severity === 'WARNING' ? 'warn' : 'info';
+                html += '<div class="warning-item ' + cls + '"><div style="font-size:20px;">⚠️</div><div><div style="font-weight:600;margin-bottom:4px;">' + escapeHtml(w.knowledgePoint || w.type) + '</div><div style="font-size:13px;color:#666;">' + escapeHtml(w.description) + '</div><div style="font-size:12px;color:#999;margin-top:4px;">💡 ' + escapeHtml(w.recommendedAction || '') + '</div></div></div>';
+            });
+            document.getElementById('warnings-container').innerHTML = html;
+        }
+
+        // ===== Helpers =====
+        function emotionLabel(em) {
+            var map = { EXCITED: '兴奋', HAPPY: '开心', CALM: '平静', HUNGRY: '饥饿', SLEEPING: '沉睡' };
+            return map[em] || em || '平静';
+        }
+
+        function skillLabel(sk) {
+            var map = { basic_greeting: '基础问候', daily_suggestion: '每日建议', weak_point_alert: '薄弱点提醒', feynman_teaching: '费曼教学', timeline_prediction: '时空预测', hive_insight: '群体智慧' };
+            return map[sk] || sk;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+    <div th:replace="fragments :: spirit-widget"></div>
+</body>
+</html>

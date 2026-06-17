@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  jellystudy-knowledge-1:
+    build:
+      context: ./jellystudy-knowledge
+      dockerfile: Dockerfile
+    container_name: jellystudy-knowledge-1
+    ports:
+      - "8081:8081"
+      - "20881:20881"
+    environment:
+      - SERVER_PORT=8081
+      - DUBBO_PROTOCOL_PORT=20881
+      - DUBBO_APPLICATION_QOS_PORT=33334
+      - SPRING_DATA_MONGODB_HOST=host.docker.internal
+      - DUBBO_REGISTRY_ADDRESS=nacos://host.docker.internal:8848
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=host.docker.internal:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=host.docker.internal:8848
+      - SPRING_ZIPKIN_BASE_URL=http://host.docker.internal:9411/
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  jellystudy-knowledge-2:
+    build:
+      context: ./jellystudy-knowledge
+      dockerfile: Dockerfile
+    container_name: jellystudy-knowledge-2
+    ports:
+      - "8091:8091"
+      - "20891:20891"
+    environment:
+      - SERVER_PORT=8091
+      - DUBBO_PROTOCOL_PORT=20891
+      - DUBBO_APPLICATION_QOS_PORT=33344
+      - SPRING_DATA_MONGODB_HOST=host.docker.internal
+      - DUBBO_REGISTRY_ADDRESS=nacos://host.docker.internal:8848
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=host.docker.internal:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=host.docker.internal:8848
+      - SPRING_ZIPKIN_BASE_URL=http://host.docker.internal:9411/
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  jellystudy-studyplan-1:
+    build:
+      context: ./jellystudy-studyplan
+      dockerfile: Dockerfile
+    container_name: jellystudy-studyplan-1
+    ports:
+      - "8084:8084"
+      - "20885:20885"
+    environment:
+      - SERVER_PORT=8084
+      - DUBBO_PROTOCOL_PORT=20885
+      - DUBBO_APPLICATION_QOS_PORT=33354
+      - SPRING_DATA_MONGODB_URI=mongodb://host.docker.internal:27017/jellystudy-studyplan
+      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/jellystudy_users?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=050619
+      - DUBBO_REGISTRY_ADDRESS=nacos://host.docker.internal:8848
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=host.docker.internal:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=host.docker.internal:8848
+      - SPRING_ZIPKIN_BASE_URL=http://host.docker.internal:9411/
+      - SPRING_RABBITMQ_HOST=host.docker.internal
+      - SPRING_REDIS_HOST=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  jellystudy-studyplan-2:
+    build:
+      context: ./jellystudy-studyplan
+      dockerfile: Dockerfile
+    container_name: jellystudy-studyplan-2
+    ports:
+      - "8094:8094"
+      - "20895:20895"
+    environment:
+      - SERVER_PORT=8094
+      - DUBBO_PROTOCOL_PORT=20895
+      - DUBBO_APPLICATION_QOS_PORT=33364
+      - SPRING_DATA_MONGODB_URI=mongodb://host.docker.internal:27017/jellystudy-studyplan
+      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/jellystudy_users?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=050619
+      - DUBBO_REGISTRY_ADDRESS=nacos://host.docker.internal:8848
+      - SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR=host.docker.internal:8848
+      - SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR=host.docker.internal:8848
+      - SPRING_ZIPKIN_BASE_URL=http://host.docker.internal:9411/
+      - SPRING_RABBITMQ_HOST=host.docker.internal
+      - SPRING_REDIS_HOST=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

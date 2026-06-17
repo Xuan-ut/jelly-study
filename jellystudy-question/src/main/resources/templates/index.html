@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('JellyStudy - 知识问答平台', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+        <style>
+            .category-nav {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 16px;
+                padding: 12px;
+                background: #fff;
+                border-radius: var(--radius-md);
+                box-shadow: var(--shadow-sm);
+            }
+            .category-item {
+                padding: 8px 16px;
+                border-radius: 20px;
+                text-decoration: none;
+                color: #666;
+                font-size: 14px;
+                transition: all 0.3s ease;
+            }
+            .category-item:hover {
+                background: var(--primary-light);
+                color: var(--primary-color);
+            }
+            .category-item.active {
+                background: var(--primary-color);
+                color: #fff;
+            }
+            .topic-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 16px;
+            }
+            .topic-card {
+                padding: 16px;
+                background: #fafafa;
+                border-radius: var(--radius-md);
+                cursor: pointer;
+                transition: all 0.3s ease;
+                border: 1px solid transparent;
+            }
+            .topic-card:hover {
+                background: var(--primary-light);
+                border-color: var(--primary-color);
+                transform: translateY(-2px);
+            }
+            .topic-card h3 { margin-bottom: 8px; color: #333; }
+            .topic-card .count { font-size: 12px; color: #999; }
+            .hot-badge {
+                display: inline-block;
+                padding: 2px 8px;
+                background: #fff2e8;
+                color: #fa8c16;
+                border-radius: 10px;
+                font-size: 12px;
+                margin-left: 8px;
+            }
+            .hot-rank {
+                display: inline-block;
+                width: 24px;
+                height: 24px;
+                line-height: 24px;
+                text-align: center;
+                background: #ff4d4f;
+                color: #fff;
+                border-radius: 50%;
+                font-size: 12px;
+                font-weight: bold;
+                margin-right: 12px;
+            }
+            .hot-rank.top3 {
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            }
+            .refresh-btn {
+                float: right;
+                padding: 4px 12px;
+                font-size: 12px;
+                color: #1890ff;
+                background: transparent;
+                border: 1px solid #1890ff;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            .refresh-btn:hover { background: #1890ff; color: #fff; }
+            .refresh-btn.refreshing { animation: spin 1s linear infinite; }
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('index')"></div>
+
+    <div class="container">
+        <div class="main-content" style="width: 100%;">
+            <div class="category-nav">
+                <a href="#" class="category-item active" id="nav-all">全部</a>
+                <a href="#" class="category-item" id="nav-hot">🔥 热榜</a>
+                <a href="#" class="category-item" id="nav-popular">🏆 最受欢迎</a>
+                <a href="#" class="category-item" id="nav-topic">📚 专题</a>
+            </div>
+
+            <div class="card" id="content-card">
+                <div class="card-header" id="content-header">全部问题 <span class="evaluation-badge">AI智能评估</span></div>
+                <div class="card-body" id="content-body"></div>
+                <div class="card-footer" id="pagination"></div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="sidebar-card">
+                <div class="card-header">评估说明</div>
+                <div class="card-body">
+                    <p style="font-size: 13px; color: #666; line-height: 1.5;">
+                        🤖 系统会自动对问题进行智能评估，包括：
+                        <br>- 知识点提取
+                        <br>- 难度分级（难/中/易）
+                        <br>- 答案智能评分
+                    </p>
+                </div>
+            </div>
+
+            <div class="sidebar-card">
+                <div class="card-header">难度图例</div>
+                <div class="card-body">
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <span class="difficulty-tag difficulty-easy">简单</span>
+                        <span style="font-size: 12px; color: #666; margin-left: 8px;">基础问题</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <span class="difficulty-tag difficulty-medium">中等</span>
+                        <span style="font-size: 12px; color: #666; margin-left: 8px;">需要一定知识</span>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <span class="difficulty-tag difficulty-hard">困难</span>
+                        <span style="font-size: 12px; color: #666; margin-left: 8px;">较复杂问题</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:replace="fragments :: footer"></div>
+
+    <script th:inline="javascript">
+        let currentPage = 0;
+        let totalPages = 0;
+        let currentCategory = 'all';
+        let currentTopicId = null;
+        const searchKeyword = /*[[${searchKeyword}]]*/ null;
+
+        function getDifficultyTag(difficulty) {
+            if (!difficulty) return '<span class="difficulty-tag difficulty-pending">待分析</span>';
+            const style = difficulty === '简单' ? 'difficulty-easy' : difficulty === '中等' ? 'difficulty-medium' : 'difficulty-hard';
+            return `<span class="difficulty-tag ${style}">${difficulty}</span>`;
+        }
+
+        function getKnowledgeTags(knowledgePoints) {
+            if (!knowledgePoints || knowledgePoints.length === 0) return '';
+            return `<div class="knowledge-tags">${knowledgePoints.map(kp => `<span class="knowledge-tag">${kp}</span>`).join('')}</div>`;
+        }
+
+        function switchCategory(category) {
+            currentCategory = category;
+            currentTopicId = null;
+            currentPage = 0;
+            document.querySelectorAll('.category-item').forEach(item => item.classList.remove('active'));
+            document.getElementById('nav-' + category).classList.add('active');
+            const header = document.getElementById('content-header');
+            if (category === 'all') header.innerHTML = '全部问题 <span class="evaluation-badge">AI智能评估</span>';
+            else if (category === 'hot') header.innerHTML = '🔥 热榜 <span style="font-size:12px;color:#999">按热度排序</span><button class="refresh-btn" id="hot-refresh" onclick="refreshHotList()">🔄 刷新</button>';
+            else if (category === 'popular') header.innerHTML = '🏆 最受欢迎 <span style="font-size:12px;color:#999">综合评分排行</span><button class="refresh-btn" id="popular-refresh" onclick="refreshPopularRank()">🔄 刷新</button>';
+            else if (category === 'topic') header.innerHTML = '📚 专题 <span style="font-size:12px;color:#999">知识点分类</span>';
+            if (category === 'topic') loadTopics();
+            else loadQuestions(currentPage);
+        }
+
+        function loadQuestions(page, topicId) {
+            currentPage = page;
+            let url = '/api/questions/page';
+            let params = { page: page, size: 10 };
+            if (currentCategory === 'hot') { url = '/api/questions/hot'; }
+            else if (currentCategory === 'popular') { url = '/api/redis/popular'; params = { topN: 10 }; }
+            else if (topicId) { url = `/api/questions/knowledge-point/${topicId}`; currentTopicId = topicId; }
+
+            axios.get(url, { params }).then(response => {
+                const data = response.data;
+                let questions = [];
+                totalPages = 1;
+                if (data.content) { questions = data.content; totalPages = data.totalPages; }
+                else if (data.success && data.data) { questions = data.data; }
+                else { questions = data; }
+
+                const container = document.getElementById('content-body');
+                container.innerHTML = '';
+                if (questions.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">暂无问题</p>';
+                } else {
+                    questions.forEach((question, index) => {
+                        const div = document.createElement('div');
+                        div.className = 'question-item';
+                        let hotRank = '';
+                        if ((currentCategory === 'hot' || currentCategory === 'popular') && index < 10) {
+                            hotRank = `<span class="hot-rank ${index < 3 ? 'top3' : ''}">${index + 1}</span>`;
+                        }
+                        div.innerHTML = `
+                            <h3>${hotRank}<a href="/question?id=${question.id}">${question.title}</a></h3>
+                            <div class="content">${question.content}</div>
+                            ${getDifficultyTag(question.difficulty)}
+                            ${getKnowledgeTags(question.knowledgePoints)}
+                            <div class="meta">
+                                <span class="author">${question.author}</span>
+                                <span>${new Date(question.createTime).toLocaleDateString()}</span>
+                                <span>回答 ${question.answerCount}</span>
+                                <span>点赞 ${question.likeCount}</span>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+                renderPagination();
+            }).catch(error => console.error('加载问题失败:', error));
+        }
+
+        function loadTopics() {
+            Promise.all([axios.get('/api/knowledge-points'), axios.get('/api/questions/count-by-knowledge-points')])
+            .then(([topicsResponse, countResponse]) => {
+                const topics = topicsResponse.data;
+                const countMap = countResponse.data;
+                const container = document.getElementById('content-body');
+                document.getElementById('pagination').innerHTML = '';
+                if (topics.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">暂无知识点</p>';
+                } else {
+                    let html = '<div class="topic-grid">';
+                    topics.forEach(topic => {
+                        const questionCount = countMap[topic.id] || 0;
+                        html += `<div class="topic-card" onclick="loadTopicQuestions('${topic.id}', '${topic.name}')">
+                            <h3>${topic.name}</h3>
+                            <p style="font-size: 13px; color: #666; margin-bottom: 8px;">${topic.description || '暂无描述'}</p>
+                            <div class="count">📝 ${questionCount} 个问题</div>
+                        </div>`;
+                    });
+                    html += '</div>';
+                    container.innerHTML = html;
+                }
+            }).catch(error => console.error('加载知识点失败:', error));
+        }
+
+        function loadTopicQuestions(topicId, topicName) {
+            currentTopicId = topicId;
+            currentPage = 0;
+            document.getElementById('content-header').innerHTML = `📚 ${topicName} <a href="#" onclick="switchCategory('topic')" style="font-size:12px;color:#999;margin-left:8px;">返回专题</a>`;
+            loadQuestions(0, topicId);
+        }
+
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+            if (currentCategory === 'topic' && !currentTopicId) return;
+            if (totalPages <= 1) { pagination.innerHTML = '<div class="pagination" style="justify-content: center; color: #999; font-size: 13px;">只有一页数据</div>'; return; }
+            let html = '<div class="pagination">';
+            html += `<a href="#" onclick="loadQuestions(${currentPage - 1}, '${currentTopicId || ''}')" ${currentPage === 0 ? 'class="disabled"' : ''}>上一页</a>`;
+            for (let i = 0; i < totalPages; i++) {
+                html += `<a href="#" onclick="loadQuestions(${i}, '${currentTopicId || ''}')" ${i === currentPage ? 'class="active"' : ''}>${i + 1}</a>`;
+            }
+            html += `<a href="#" onclick="loadQuestions(${currentPage + 1}, '${currentTopicId || ''}')" ${currentPage === totalPages - 1 ? 'class="disabled"' : ''}>下一页</a>`;
+            html += '</div>';
+            pagination.innerHTML = html;
+        }
+
+        document.getElementById('nav-all').addEventListener('click', e => { e.preventDefault(); switchCategory('all'); });
+        document.getElementById('nav-hot').addEventListener('click', e => { e.preventDefault(); switchCategory('hot'); });
+        document.getElementById('nav-popular').addEventListener('click', e => { e.preventDefault(); switchCategory('popular'); });
+        document.getElementById('nav-topic').addEventListener('click', e => { e.preventDefault(); switchCategory('topic'); });
+
+        function refreshPopularRank() {
+            const btn = document.getElementById('popular-refresh');
+            if (!btn) return;
+            btn.classList.add('refreshing'); btn.disabled = true; btn.innerHTML = '🔄';
+            switchCategory('popular');
+            setTimeout(() => { const b = document.getElementById('popular-refresh'); if (b) { b.classList.remove('refreshing'); b.disabled = false; b.innerHTML = '🔄 刷新'; } }, 1000);
+        }
+
+        function refreshHotList() {
+            const btn = document.getElementById('hot-refresh');
+            if (!btn) return;
+            btn.classList.add('refreshing'); btn.disabled = true; btn.innerHTML = '🔄';
+            axios.post('/api/redis/hot/preload').then(() => loadQuestions(0)).catch(() => loadQuestions(0)).finally(() => { btn.classList.remove('refreshing'); btn.disabled = false; btn.innerHTML = '🔄 刷新'; });
+        }
+
+        function searchQuestions(keyword) {
+            axios.get('/api/questions/search', { params: { keyword: keyword } }).then(response => {
+                const questions = response.data;
+                const container = document.getElementById('content-body');
+                document.getElementById('content-header').innerHTML = `搜索结果 - 共找到 ${questions.length} 个问题`;
+                document.getElementById('pagination').innerHTML = '';
+                if (questions.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">未找到相关问题</p>';
+                } else {
+                    container.innerHTML = '';
+                    questions.forEach(question => {
+                        const div = document.createElement('div');
+                        div.className = 'question-item';
+                        div.innerHTML = `
+                            <h3><a href="/question?id=${question.id}">${question.title}</a></h3>
+                            <div class="content">${question.content}</div>
+                            ${getDifficultyTag(question.difficulty)}
+                            ${getKnowledgeTags(question.knowledgePoints)}
+                            <div class="meta">
+                                <span class="author">${question.author}</span>
+                                <span>${new Date(question.createTime).toLocaleDateString()}</span>
+                                <span>回答 ${question.answerCount}</span>
+                                <span>点赞 ${question.likeCount}</span>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+            }).catch(error => console.error('搜索失败:', error));
+        }
+
+        if (searchKeyword) {
+            searchQuestions(searchKeyword);
+        } else {
+            switchCategory('all');
+        }
+    </script>
+<div th:replace="fragments :: spirit-widget"></div>
+</body>
+</html>

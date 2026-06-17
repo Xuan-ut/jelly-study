@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识点服务 - JellyStudy</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            text-align: center;
+            padding: 20px;
+            background-color: #0f88eb;
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .btn {
+            background-color: #0f88eb;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        .btn:hover {
+            background-color: #0c76d1;
+        }
+        .btn-danger {
+            background-color: #ff4d4f;
+        }
+        .btn-danger:hover {
+            background-color: #ff7875;
+        }
+        .knowledge-point-item {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .knowledge-point-item:last-child {
+            border-bottom: none;
+        }
+        .knowledge-point-item h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        .knowledge-point-item .desc {
+            color: #666;
+            font-size: 13px;
+        }
+        .knowledge-point-item .actions {
+            margin-top: 10px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .status.success {
+            background-color: #f6ffed;
+            border: 1px solid #b7eb8f;
+            color: #52c41a;
+        }
+        .status.error {
+            background-color: #fff2f0;
+            border: 1px solid #ffccc7;
+            color: #ff4d4f;
+        }
+        .loading {
+            color: #999;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>知识点服务</h1>
+    </div>
+
+    <div class="card">
+        <div class="card-header">服务状态</div>
+        <div id="status-check" class="loading">正在检查服务状态...</div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">添加知识点</div>
+        <form id="add-form">
+            <div class="form-group">
+                <label>名称</label>
+                <input type="text" id="name" required placeholder="请输入知识点名称">
+            </div>
+            <div class="form-group">
+                <label>描述</label>
+                <textarea id="description" placeholder="请输入知识点描述"></textarea>
+            </div>
+            <button type="submit" class="btn">添加</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-header">知识点列表</div>
+        <div id="knowledge-points-list" class="loading">加载中...</div>
+    </div>
+
+    <script>
+        // 检查服务状态
+        function checkStatus() {
+            axios.get('/api/knowledge-points')
+                .then(response => {
+                    document.getElementById('status-check').innerHTML = 
+                        '<div class="status success">✓ 服务运行正常，共 ' + response.data.length + ' 个知识点</div>';
+                    loadKnowledgePoints();
+                })
+                .catch(error => {
+                    document.getElementById('status-check').innerHTML = 
+                        '<div class="status error">✗ 服务连接失败: ' + error.message + '</div>';
+                });
+        }
+
+        // 加载知识点列表
+        function loadKnowledgePoints() {
+            axios.get('/api/knowledge-points')
+                .then(response => {
+                    const list = document.getElementById('knowledge-points-list');
+                    if (response.data.length === 0) {
+                        list.innerHTML = '<p style="color:#999;">暂无知识点，点击上方添加</p>';
+                        return;
+                    }
+                    list.innerHTML = response.data.map(kp => `
+                        <div class="knowledge-point-item">
+                            <h4>${kp.name}</h4>
+                            <div class="desc">${kp.description || '无描述'}</div>
+                            <div class="desc">ID: ${kp.id}</div>
+                            <div class="actions">
+                                <button class="btn btn-danger" onclick="deleteKnowledgePoint('${kp.id}')">删除</button>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    document.getElementById('knowledge-points-list').innerHTML = 
+                        '<p style="color:#ff4d4f;">加载失败: ' + error.message + '</p>';
+                });
+        }
+
+        // 删除知识点
+        function deleteKnowledgePoint(id) {
+            if (confirm('确定要删除这个知识点吗？')) {
+                axios.delete('/api/knowledge-points/' + id)
+                    .then(() => {
+                        checkStatus();
+                    })
+                    .catch(error => {
+                        alert('删除失败: ' + error.message);
+                    });
+            }
+        }
+
+        // 提交表单
+        document.getElementById('add-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const knowledgePoint = {
+                name: document.getElementById('name').value,
+                description: document.getElementById('description').value,
+                parentId: null,
+                path: '/' + document.getElementById('name').value
+            };
+            axios.post('/api/knowledge-points', knowledgePoint)
+                .then(() => {
+                    alert('添加成功！');
+                    this.reset();
+                    checkStatus();
+                })
+                .catch(error => {
+                    alert('添加失败: ' + error.message);
+                });
+        });
+
+        // 页面加载时检查状态
+        checkStatus();
+    </script>
+</body>
+</html>

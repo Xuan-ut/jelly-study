@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('提问 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .card-body {
+            padding-bottom: 60px;
+        }
+        .form-group {
+            margin-bottom: 24px;
+        }
+        /* 修复下拉列表被截断的问题 */
+        .card {
+            overflow: visible !important;
+        }
+        .card-body {
+            overflow: visible !important;
+        }
+        .form-group textarea {
+            min-height: 200px;
+        }
+        .form-actions {
+            margin-top: 32px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .knowledge-point-selector {
+            position: relative;
+        }
+        .selector-header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            min-height: 56px;
+            cursor: text;
+            transition: all 0.2s ease;
+            background-color: #fff;
+        }
+        .selector-header:focus-within {
+            border-color: #0f88eb;
+            box-shadow: 0 0 0 3px rgba(15, 136, 235, 0.15);
+        }
+        .selector-header:hover {
+            border-color: #b0b0b0;
+        }
+        .selected-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 14px 8px 16px;
+            background-color: #0f88eb;
+            border: 1px solid #0f88eb;
+            border-radius: 24px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #ffffff;
+            cursor: default;
+            transition: all 0.2s ease;
+            line-height: 1.5;
+        }
+        .selected-tag:hover {
+            background-color: #0c76d1;
+            border-color: #0c76d1;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(15, 136, 235, 0.3);
+        }
+        .selected-tag .remove-btn {
+            margin-left: 8px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            background-color: rgba(255,255,255,0.2);
+        }
+        .selected-tag .remove-btn:hover {
+            background-color: rgba(255,255,255,0.3);
+        }
+        .selected-tag .remove-btn::after {
+            content: '×';
+            font-size: 16px;
+            line-height: 1;
+            color: #ffffff;
+        }
+        .search-input {
+            border: none;
+            outline: none;
+            font-size: 16px;
+            padding: 6px 0;
+            min-width: 120px;
+            flex: 1;
+            color: #333;
+        }
+        .search-input::placeholder {
+            color: #999;
+            font-size: 15px;
+        }
+        .selector-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            width: 100%;
+            background-color: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.2);
+            max-height: 0;
+            overflow: hidden;
+            z-index: 99999;
+            opacity: 0;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+            margin-top: 4px;
+        }
+        .selector-dropdown.show {
+            max-height: 400px;
+            overflow-y: auto;
+            opacity: 1;
+            -webkit-overflow-scrolling: touch;
+        }
+        .selector-dropdown::-webkit-scrollbar {
+            width: 6px;
+        }
+        .selector-dropdown::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        .selector-dropdown::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            font-size: 16px;
+            color: #333;
+            line-height: 1.6;
+            min-height: 50px;
+        }
+        .dropdown-item:hover {
+            background-color: #f0f7ff;
+        }
+        .dropdown-item.selected {
+            background-color: #e6f7ff;
+            color: #0f88eb;
+        }
+        .dropdown-item.disabled {
+            color: #999;
+            cursor: not-allowed;
+        }
+        .dropdown-item .check-icon {
+            margin-right: 12px;
+            color: #52c41a;
+            font-size: 18px;
+            display: none;
+        }
+        .dropdown-item.selected .check-icon {
+            display: inline;
+        }
+        .dropdown-empty {
+            padding: 24px;
+            text-align: center;
+            color: #999;
+            font-size: 16px;
+        }
+        .selector-footer {
+            padding: 12px 16px;
+            border-top: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #999;
+        }
+        .evaluation-tip {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            color: white;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .evaluation-tip .icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .evaluation-tip .content {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .evaluation-tip .title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .footer {
+            margin-top: 200px;
+        }
+        .ai-analyze-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .ai-analyze-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .ai-analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .ai-kp-result {
+            margin-top: 12px;
+            padding: 16px;
+            background: #f9f9ff;
+            border: 1px solid #d9d9f0;
+            border-radius: 8px;
+            display: none;
+        }
+        .ai-kp-result.show {
+            display: block;
+        }
+        .ai-kp-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            margin: 4px;
+            background: white;
+            border: 1px solid #d9d9f0;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ai-kp-item:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+        .ai-kp-item.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .ai-kp-item input[type="checkbox"] {
+            display: none;
+        }
+        .ai-difficulty-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .ai-kp-card {
+            margin-bottom: 8px;
+            padding: 10px 14px;
+            background: white;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            transition: border-color 0.2s;
+        }
+        .ai-kp-card.selected {
+            border-color: #667eea;
+            background: #fafaff;
+        }
+        .ai-kp-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ai-kp-card-header input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+        .ai-kp-card-header .kp-name {
+            font-weight: 500;
+            font-size: 14px;
+            color: #333;
+            flex-shrink: 0;
+        }
+        .ai-kp-card-header .kp-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        .ai-kp-card-body {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 8px;
+            margin-left: 26px;
+        }
+        .ai-kp-desc-input {
+            flex: 1;
+            min-width: 150px;
+            padding: 6px 10px;
+            border: 1px solid #d9d9f0;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .ai-kp-desc-input:focus {
+            border-color: #667eea;
+        }
+        .ai-kp-link-select {
+            max-width: 220px;
+            padding: 6px 10px;
+            border: 1px solid #d9d9f0;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+            background: white;
+            cursor: pointer;
+        }
+        .ai-kp-link-select:focus {
+            border-color: #667eea;
+        }
+        .new-kp-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 14px 8px 16px;
+            background-color: #f0f0ff;
+            border: 1px dashed #667eea;
+            border-radius: 24px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #667eea;
+            cursor: default;
+            line-height: 1.5;
+        }
+        .new-kp-tag .remove-btn {
+            margin-left: 8px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            background-color: rgba(102, 126, 234, 0.15);
+        }
+        .new-kp-tag .remove-btn:hover {
+            background-color: rgba(102, 126, 234, 0.3);
+        }
+        .new-kp-tag .remove-btn::after {
+            content: '×';
+            font-size: 16px;
+            line-height: 1;
+            color: #667eea;
+        }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('ask')"></div>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">发布问题</div>
+            <div class="card-body">
+                <div class="evaluation-tip">
+                    <span class="icon">🤖</span>
+                    <div class="content">
+                        <div class="title">AI智能评估</div>
+                        <p>发布问题前可使用AI智能分析：</p>
+                        <ul>
+                            <li>AI提取知识点后可编辑描述或关联已有知识点</li>
+                            <li>确认知识点后再发布，发布时仅评估难度</li>
+                            <li>回答提交后自动评分（100分制）</li>
+                            <li>提供详细的评估反馈</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <form id="ask-form">
+                    <div class="form-group">
+                        <label for="title">标题</label>
+                        <input type="text" id="title" name="title" required placeholder="请输入问题标题">
+                    </div>
+                    <div class="form-group">
+                        <label for="content">内容</label>
+                        <textarea id="content" name="content" required placeholder="请详细描述你的问题"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="author">作者</label>
+                        <input type="text" id="author" name="author" required placeholder="请输入你的名字">
+                    </div>
+                    <div class="form-group">
+                        <label>关联知识点</label>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <span style="font-size: 13px; color: #999;">💡 点击下拉列表中的知识点可多选，或使用AI智能提取</span>
+                            <button type="button" class="ai-analyze-btn" id="ai-analyze-btn" onclick="analyzeKnowledgePoints()">
+                                🤖 AI提取知识点
+                            </button>
+                        </div>
+                        <div class="knowledge-point-selector" id="kp-selector">
+                            <div class="selector-header" id="selector-header">
+                                <input type="text" class="search-input" id="kp-search-input" placeholder="输入关键词搜索知识点，或点击下方下拉列表选择...">
+                            </div>
+                            <div class="selector-dropdown" id="selector-dropdown">
+                                <div class="dropdown-empty">加载中...</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="selected-knowledge-points" name="knowledge-points">
+                        <div style="margin-top: 8px; font-size: 13px; color: #999;" id="selected-count">
+                            已选择 <span style="color: #0f88eb; font-weight: 600;">0</span> 个知识点
+                        </div>
+                        <div class="ai-kp-result" id="ai-kp-result">
+                            <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #667eea;">
+                                🤖 AI提取的知识点 <span id="ai-difficulty-info"></span>
+                            </div>
+                            <div style="font-size: 12px; color: #999; margin-bottom: 10px;">选择要关联的知识点，可为新知识点添加描述或关联到已有知识点：</div>
+                            <div id="ai-kp-list"></div>
+                            <div style="margin-top: 12px; text-align: right;">
+                                <button type="button" class="btn btn-primary" style="padding: 6px 16px; font-size: 13px;" id="add-ai-kp-btn" onclick="addSelectedAiKnowledgePoints()" disabled>
+                                    确认添加选中的知识点
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">取消</button>
+                        <button type="submit" class="btn btn-primary">发布问题</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+
+    
+    <script>
+        let allKnowledgePoints = [];
+        let selectedKnowledgePointIds = [];
+        let aiExtractedKnowledgePoints = [];
+        let selectedAiKnowledgePoints = new Set();
+        let aiKPDescriptions = {};
+        let aiKPLinks = {};
+        let newKnowledgePoints = [];
+        let aiDifficulty = null;
+        let createdQuestionId = null;
+        
+        function loadKnowledgePoints() {
+            axios.get('/api/knowledge-points')
+                .then(response => {
+                    allKnowledgePoints = response.data;
+                    renderDropdown(allKnowledgePoints);
+                })
+                .catch(error => {
+                    console.error('加载知识点失败:', error);
+                });
+        }
+        
+        function renderDropdown(points) {
+            const dropdown = document.getElementById('selector-dropdown');
+            
+            if (points.length === 0) {
+                dropdown.innerHTML = '<div class="dropdown-empty">暂无知识点</div>';
+                return;
+            }
+            
+            let html = '';
+            points.forEach(kp => {
+                const isSelected = selectedKnowledgePointIds.includes(kp.id);
+                const isDisabled = isSelected;
+                html += `
+                    <div class="dropdown-item ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" 
+                         data-id="${kp.id}" data-name="${kp.name}"
+                         onclick="${isDisabled ? '' : 'toggleKnowledgePoint(\'' + kp.id + '\', \'' + kp.name + '\')'}">
+                        <span class="check-icon">✓</span>
+                        <span>${kp.name}</span>
+                    </div>
+                `;
+            });
+            
+            dropdown.innerHTML = html;
+        }
+        
+        function toggleKnowledgePoint(id, name) {
+            const index = selectedKnowledgePointIds.indexOf(id);
+            
+            if (index > -1) {
+                selectedKnowledgePointIds.splice(index, 1);
+                removeTag(id);
+            } else {
+                selectedKnowledgePointIds.push(id);
+                addTag(id, name);
+            }
+            
+            renderDropdown(allKnowledgePoints);
+            updateHiddenInput();
+            updateSelectedCount();
+        }
+        
+        function addTag(id, name) {
+            const header = document.getElementById('selector-header');
+            const searchInput = document.getElementById('kp-search-input');
+            
+            const tag = document.createElement('div');
+            tag.className = 'selected-tag';
+            tag.dataset.id = id;
+            tag.innerHTML = `
+                <span>${name}</span>
+                <span class="remove-btn" onclick="toggleKnowledgePoint('${id}', '${name}')"></span>
+            `;
+            
+            header.insertBefore(tag, searchInput);
+        }
+        
+        function removeTag(id) {
+            const tags = document.querySelectorAll('.selected-tag');
+            tags.forEach(tag => {
+                if (tag.dataset.id === id) {
+                    tag.remove();
+                }
+            });
+        }
+        
+        function updateHiddenInput() {
+            document.getElementById('selected-knowledge-points').value = JSON.stringify(selectedKnowledgePointIds);
+        }
+        
+        function updateSelectedCount() {
+            const count = selectedKnowledgePointIds.length + newKnowledgePoints.length;
+            document.querySelector('#selected-count span').textContent = count;
+        }
+        
+        function searchKnowledgePoints(keyword) {
+            if (!keyword.trim()) {
+                renderDropdown(allKnowledgePoints);
+                return;
+            }
+            
+            const filtered = allKnowledgePoints.filter(kp => 
+                kp.name.toLowerCase().includes(keyword.toLowerCase()) ||
+                kp.description.toLowerCase().includes(keyword.toLowerCase())
+            );
+            
+            renderDropdown(filtered);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadKnowledgePoints();
+            
+            document.getElementById('kp-search-input').addEventListener('input', function(e) {
+                searchKnowledgePoints(e.target.value);
+                document.getElementById('selector-dropdown').classList.add('show');
+            });
+            
+            document.getElementById('selector-header').addEventListener('click', function(e) {
+                if (e.target !== document.getElementById('kp-search-input')) {
+                    document.getElementById('kp-search-input').focus();
+                }
+                document.getElementById('selector-dropdown').classList.add('show');
+            });
+            
+            document.addEventListener('click', function(e) {
+                const selector = document.getElementById('kp-selector');
+                if (!selector.contains(e.target)) {
+                    document.getElementById('selector-dropdown').classList.remove('show');
+                }
+            });
+        });
+        
+        document.getElementById('ask-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            const newKPNames = newKnowledgePoints.map(kp => kp.name);
+            const newKPDescs = {};
+            newKnowledgePoints.forEach(kp => {
+                if (kp.description) {
+                    newKPDescs[kp.name] = kp.description;
+                }
+            });
+            
+            const allKPNames = [];
+            selectedKnowledgePointIds.forEach(id => {
+                const kp = allKnowledgePoints.find(akp => akp.id === id);
+                if (kp) {
+                    allKPNames.push(kp.name);
+                }
+            });
+            newKPNames.forEach(name => {
+                if (!allKPNames.includes(name)) {
+                    allKPNames.push(name);
+                }
+            });
+            
+            const question = {
+                title: formData.get('title'),
+                content: formData.get('content'),
+                author: formData.get('author'),
+                knowledgePointIds: selectedKnowledgePointIds,
+                knowledgePoints: newKPNames,
+                knowledgePointDescriptions: newKPDescs,
+                difficulty: aiDifficulty
+            };
+            
+            axios.post('/api/questions', question, { timeout: 120000 })
+                .then(response => {
+                    const data = response.data;
+                    if (data.success) {
+                        JellyStudyApp.recordActivity('QUESTION', data.questionId || '', question.title, question.content);
+                        alert('问题发布成功！');
+                        window.location.href = '/';
+                    } else {
+                        alert('发布失败: ' + (data.message || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    let msg = '发布失败，请重试';
+                    if (error.response && error.response.data && error.response.data.message) {
+                        msg = '发布失败: ' + error.response.data.message;
+                    }
+                    alert(msg);
+                    console.error(error);
+                });
+        });
+        
+        function analyzeKnowledgePoints() {
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const text = (title + ' ' + content).trim();
+            
+            if (!text) {
+                alert('请先输入问题标题和内容');
+                return;
+            }
+            
+            const btn = document.getElementById('ai-analyze-btn');
+            btn.disabled = true;
+            btn.innerHTML = '🤖 AI分析中...';
+            
+            axios.post('/api/questions/analyze-knowledge-points', { content: text }, { timeout: 120000 })
+                .then(response => {
+                    const data = response.data;
+                    if (data.success) {
+                        aiExtractedKnowledgePoints = data.knowledgePoints || [];
+                        aiDifficulty = data.difficulty || '中等';
+                        aiKPDescriptions = {};
+                        aiKPLinks = {};
+                        
+                        const diffColors = { '简单': '#52c41a', '中等': '#fa8c16', '困难': '#ff4d4f' };
+                        const diffBgs = { '简单': '#f6ffed', '中等': '#fff7e6', '困难': '#fff2f0' };
+                        document.getElementById('ai-difficulty-info').innerHTML = 
+                            `| 难度评估: <span class="ai-difficulty-tag" style="color:${diffColors[aiDifficulty]};background:${diffBgs[aiDifficulty]};">${aiDifficulty}</span>`;
+                        
+                        renderAiKnowledgePoints();
+                        document.getElementById('ai-kp-result').classList.add('show');
+                    } else {
+                        alert('AI分析失败: ' + (data.message || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    alert('AI分析失败，请重试');
+                    console.error(error);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '🤖 AI提取知识点';
+                });
+        }
+        
+        function renderAiKnowledgePoints() {
+            const container = document.getElementById('ai-kp-list');
+            if (aiExtractedKnowledgePoints.length === 0) {
+                container.innerHTML = '<div style="color: #999; font-size: 13px;">AI未提取到知识点</div>';
+                return;
+            }
+            
+            let html = '';
+            aiExtractedKnowledgePoints.forEach(kp => {
+                const exists = allKnowledgePoints.some(akp => akp.name === kp);
+                const isSelected = selectedAiKnowledgePoints.has(kp);
+                const linkedId = aiKPLinks[kp] || '';
+                
+                html += `
+                    <div class="ai-kp-card ${isSelected ? 'selected' : ''}">
+                        <div class="ai-kp-card-header">
+                            <input type="checkbox" ${isSelected ? 'checked' : ''} 
+                                   onchange="toggleAiKnowledgePoint('${kp}')">
+                            <span class="kp-name">${kp}</span>
+                            ${exists 
+                                ? '<span class="kp-badge" style="color:#52c41a;background:#f6ffed;">✓ 已存在</span>' 
+                                : '<span class="kp-badge" style="color:#fa8c16;background:#fff7e6;">新建</span>'}
+                        </div>
+                        ${isSelected ? `
+                        <div class="ai-kp-card-body">
+                            ${!exists ? `
+                            <input type="text" class="ai-kp-desc-input" placeholder="添加知识点描述（可选）" 
+                                   value="${aiKPDescriptions[kp] || ''}"
+                                   oninput="aiKPDescriptions['${kp}'] = this.value">
+                            ` : ''}
+                            <select class="ai-kp-link-select" 
+                                    onchange="linkAiKPToExisting('${kp}', this.value)">
+                                <option value="">-- 关联已有知识点 --</option>
+                                ${allKnowledgePoints.filter(akp => akp.name !== kp).map(akp => 
+                                    `<option value="${akp.id}" ${linkedId === akp.id ? 'selected' : ''}>${akp.name}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+        
+        function toggleAiKnowledgePoint(kpName) {
+            if (selectedAiKnowledgePoints.has(kpName)) {
+                selectedAiKnowledgePoints.delete(kpName);
+                delete aiKPLinks[kpName];
+            } else {
+                selectedAiKnowledgePoints.add(kpName);
+            }
+            renderAiKnowledgePoints();
+            document.getElementById('add-ai-kp-btn').disabled = selectedAiKnowledgePoints.size === 0;
+        }
+        
+        function linkAiKPToExisting(kpName, existingId) {
+            if (existingId) {
+                aiKPLinks[kpName] = existingId;
+            } else {
+                delete aiKPLinks[kpName];
+            }
+        }
+        
+        function addSelectedAiKnowledgePoints() {
+            if (selectedAiKnowledgePoints.size === 0) return;
+            
+            const kpNames = Array.from(selectedAiKnowledgePoints);
+            kpNames.forEach(name => {
+                const linkedId = aiKPLinks[name];
+                const exists = allKnowledgePoints.some(akp => akp.name === name);
+                
+                if (linkedId) {
+                    if (!selectedKnowledgePointIds.includes(linkedId)) {
+                        selectedKnowledgePointIds.push(linkedId);
+                        const linkedKP = allKnowledgePoints.find(akp => akp.id === linkedId);
+                        if (linkedKP) {
+                            addTag(linkedKP.id, linkedKP.name);
+                        }
+                    }
+                } else if (exists) {
+                    const existing = allKnowledgePoints.find(akp => akp.name === name);
+                    if (existing && !selectedKnowledgePointIds.includes(existing.id)) {
+                        selectedKnowledgePointIds.push(existing.id);
+                        addTag(existing.id, existing.name);
+                    }
+                } else {
+                    const alreadyAdded = newKnowledgePoints.some(kp => kp.name === name);
+                    if (!alreadyAdded) {
+                        newKnowledgePoints.push({
+                            name: name,
+                            description: aiKPDescriptions[name] || ''
+                        });
+                        addNewKPTag(name);
+                    }
+                }
+            });
+            
+            updateHiddenInput();
+            updateSelectedCount();
+            
+            document.getElementById('ai-kp-result').classList.remove('show');
+            selectedAiKnowledgePoints.clear();
+            aiKPDescriptions = {};
+            aiKPLinks = {};
+        }
+        
+        function addNewKPTag(name) {
+            const header = document.getElementById('selector-header');
+            const searchInput = document.getElementById('kp-search-input');
+            
+            const tag = document.createElement('div');
+            tag.className = 'new-kp-tag';
+            tag.dataset.name = name;
+            tag.innerHTML = `
+                <span>${name}</span>
+                <span class="remove-btn" onclick="removeNewKPTag('${name}')"></span>
+            `;
+            
+            header.insertBefore(tag, searchInput);
+        }
+        
+        function removeNewKPTag(name) {
+            newKnowledgePoints = newKnowledgePoints.filter(kp => kp.name !== name);
+            const tags = document.querySelectorAll('.new-kp-tag');
+            tags.forEach(tag => {
+                if (tag.dataset.name === name) {
+                    tag.remove();
+                }
+            });
+            updateSelectedCount();
+        }
+    </script>
+
+    <div th:replace="fragments :: footer"></div>
+<div th:replace="fragments :: spirit-widget"></div>
+</body>
+</html>

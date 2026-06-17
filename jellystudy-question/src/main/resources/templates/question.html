@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('问题详情 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .question-info h1 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+        .question-info .content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .question-info .meta {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: #999;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .question-info .meta .author {
+            color: #0f88eb;
+            font-weight: 500;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .answer-item {
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s ease;
+        }
+        .answer-item:hover {
+            background-color: #fafafa;
+        }
+        .answer-item:last-child {
+            border-bottom: none;
+        }
+        .answer-item .author {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .answer-item .content {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        .answer-item .meta {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: #999;
+            gap: 16px;
+        }
+        .comment-list {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #f0f0f0;
+        }
+        .comment-item {
+            padding: 12px;
+            background-color: #fafafa;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .comment-item .author {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .comment-item .content {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .form-group textarea {
+            min-height: 100px;
+        }
+        .form-actions {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .evaluation-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        .evaluation-section .title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .evaluation-section .title::before {
+            content: '🤖';
+            font-size: 18px;
+        }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('question')"></div>
+    
+    <div class="container">
+        <div id="question-detail"></div>
+        
+        <div class="card">
+            <div class="card-header">添加回答</div>
+            <div class="card-body">
+                <form id="answer-form">
+                    <div class="form-group">
+                        <label for="answer-content">回答内容</label>
+                        <textarea id="answer-content" name="answer-content" required placeholder="请输入你的回答"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="answer-author">作者</label>
+                        <input type="text" id="answer-author" name="answer-author" required placeholder="请输入你的名字">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">提交回答</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+
+    
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const questionId = urlParams.get('id');
+        
+        function getDifficultyTag(difficulty) {
+            if (!difficulty) return '';
+            const style = difficulty === '简单' ? 'difficulty-easy' : 
+                         difficulty === '中等' ? 'difficulty-medium' : 'difficulty-hard';
+            return `<span class="difficulty-tag ${style}">${difficulty}</span>`;
+        }
+        
+        function getKnowledgeTags(knowledgePoints) {
+            if (!knowledgePoints || knowledgePoints.length === 0) return '';
+            return `<div class="knowledge-tags">${knowledgePoints.map(kp => 
+                `<span class="knowledge-tag">${kp}</span>`).join('')}</div>`;
+        }
+        
+        function deleteQuestion(questionId) {
+            if (confirm('确定要删除这个问题吗？此操作不可撤销。')) {
+                axios.delete(`/api/questions/${questionId}`)
+                    .then(() => {
+                        alert('问题已删除');
+                        window.location.href = '/';
+                    })
+                    .catch(error => {
+                        alert('删除失败，请重试');
+                        console.error(error);
+                    });
+            }
+        }
+
+        function deleteComment(questionId, answerId, commentId) {
+            if (confirm('确定要删除这条评论吗？')) {
+                axios.delete(`/api/questions/${questionId}/answers/${answerId}/comments/${commentId}`)
+                    .then(() => {
+                        loadQuestionDetail();
+                    })
+                    .catch(error => {
+                        alert('删除失败，请重试');
+                        console.error(error);
+                    });
+            }
+        }
+
+        function likeQuestion(questionId) {
+            axios.post(`/api/questions/${questionId}/like`)
+                .then(() => {
+                    var title = document.querySelector('.question-info h1')?.textContent || '问题';
+                    JellyStudyApp.recordActivity('LIKE', questionId, title, '赞了问题', { questionId: questionId });
+                    loadQuestionDetail();
+                });
+        }
+        
+        function likeAnswer(questionId, answerId) {
+            axios.post(`/api/questions/${questionId}/answers/${answerId}/like`)
+                .then(() => {
+                    var title = document.querySelector('.question-info h1')?.textContent || '问题';
+                    JellyStudyApp.recordActivity('LIKE', answerId, title, '赞了回答', { questionId: questionId });
+                    loadQuestionDetail();
+                });
+        }
+        
+        function likeComment(questionId, answerId, commentId) {
+            axios.post(`/api/questions/${questionId}/answers/${answerId}/comments/${commentId}/like`)
+                .then(() => {
+                    var title = document.querySelector('.question-info h1')?.textContent || '问题';
+                    JellyStudyApp.recordActivity('LIKE', commentId, title, '赞了评论', { questionId: questionId });
+                    loadQuestionDetail();
+                });
+        }
+        
+        function addComment(questionId, answerId) {
+            const content = document.getElementById(`comment-content-${answerId}`).value;
+            const author = document.getElementById(`comment-author-${answerId}`).value;
+            
+            if (content && author) {
+                const comment = { content: content, author: author };
+                
+                axios.post(`/api/questions/${questionId}/answers/${answerId}/comments`, comment)
+                    .then(() => {
+                        var title = document.querySelector('.question-info h1')?.textContent || '问题';
+                        JellyStudyApp.recordActivity('COMMENT', questionId, title, content, { questionId: questionId });
+                        loadQuestionDetail();
+                    });
+            }
+        }
+        
+        function toggleCommentForm(answerId, commentId) {
+            const form = document.getElementById(`comment-form-${answerId}-${commentId}`);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function addReply(questionId, answerId, commentId) {
+            const content = document.getElementById(`comment-reply-content-${answerId}-${commentId}`).value;
+            const author = document.getElementById(`comment-reply-author-${answerId}-${commentId}`).value;
+            
+            if (content && author) {
+                const comment = { content: content, author: author };
+                axios.post(`/api/questions/${questionId}/answers/${answerId}/comments`, comment)
+                    .then(() => {
+                        var title = document.querySelector('.question-info h1')?.textContent || '问题';
+                        JellyStudyApp.recordActivity('COMMENT', questionId, title, content, { questionId: questionId });
+                        loadQuestionDetail();
+                    });
+            }
+        }
+        
+        function toggleAnswerCommentForm(answerId) {
+            const form = document.getElementById(`answer-comment-form-${answerId}`);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        document.getElementById('answer-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const answer = {
+                content: formData.get('answer-content'),
+                author: formData.get('answer-author')
+            };
+            
+            axios.post(`/api/questions/${questionId}/answers`, answer)
+                .then(response => {
+                    var title = document.querySelector('.question-info h1')?.textContent || '问题';
+                    JellyStudyApp.recordActivity('ANSWER', questionId, title, answer.content, { questionId: questionId });
+                    alert('回答提交成功！AI正在评估您的回答...');
+                    loadQuestionDetail();
+                    this.reset();
+
+                    // Spirit reaction for answering a question
+                    if (window.SpiritNotify) {
+                        SpiritNotify.celebrate('回答了问题「' + (title || '').substring(0, 15) + '」', 10, 'question_answered');
+                        // 延迟检查AI评估分数，触发精灵情绪反应
+                        setTimeout(function() {
+                            axios.get('/api/questions/' + questionId).then(function(qRes) {
+                                if (qRes.data && qRes.data.answers) {
+                                    var latest = qRes.data.answers[qRes.data.answers.length - 1];
+                                    if (latest && latest.score != null) {
+                                        SpiritNotify.reactToAnswer(latest.score / 100);
+                                    }
+                                }
+                            }).catch(function() {});
+                        }, 5000);
+                    }
+                })
+                .catch(error => {
+                    alert('提交失败，请重试');
+                    console.error(error);
+                });
+        });
+        
+        function loadKnowledgePoints(knowledgePointIds) {
+            if (knowledgePointIds && knowledgePointIds.length > 0) {
+                const container = document.getElementById('knowledge-points-list');
+                container.innerHTML = '';
+                
+                knowledgePointIds.forEach(id => {
+                    axios.get(`/api/knowledge-points/${id}`)
+                        .then(response => {
+                            const knowledgePoint = response.data;
+                            const tag = document.createElement('span');
+                            tag.className = 'knowledge-tag';
+                            tag.textContent = knowledgePoint.name;
+                            container.appendChild(tag);
+                        });
+                });
+            } else {
+                document.getElementById('knowledge-points-list').textContent = '无';
+            }
+        }
+        
+        function analyzeQuestion(questionId, questionTitle) {
+            const difficultySpan = document.getElementById(`difficulty-${questionId}`);
+            const knowledgePointsSpan = document.getElementById(`knowledge-points-${questionId}`);
+            
+            difficultySpan.innerHTML = '<span style="color: #1890ff;">分析中...</span>';
+            knowledgePointsSpan.innerHTML = '<span style="color: #1890ff;">分析中...</span>';
+            
+            axios.post('/api/evaluation/analyze', { questionContent: questionTitle, questionId: questionId, forceReanalyze: 'true' })
+                .then(response => {
+                    const result = response.data;
+                    if (result.success) {
+                        const difficulty = result.difficulty;
+                        const knowledgePoints = result.knowledgePoints;
+                        
+                        const difficultyTag = difficulty ? 
+                            `<span class="difficulty-tag ${difficulty === '简单' ? 'difficulty-easy' : difficulty === '中等' ? 'difficulty-medium' : 'difficulty-hard'}">${difficulty}</span>` : 
+                            '<span style="color: #999;">未识别</span>';
+                        
+                        difficultySpan.innerHTML = difficultyTag;
+                        knowledgePointsSpan.innerHTML = knowledgePoints && knowledgePoints.length > 0 ? 
+                            knowledgePoints.join(', ') : '<span style="color: #999;">未提取</span>';
+                        
+                        const evalInfo = document.getElementById(`eval-info-${questionId}`);
+                        const evalSection = document.getElementById(`eval-section-${questionId}`);
+                        if (evalSection) {
+                            evalSection.style.display = '';
+                        }
+                        if (evalInfo) {
+                            const evalTime = result.evaluateTime ? new Date(result.evaluateTime).toLocaleString() : new Date().toLocaleString();
+                            evalInfo.innerHTML = `评估难度: ${difficulty || '未知'} | 评估时间: ${evalTime}`;
+                        }
+                    } else {
+                        difficultySpan.innerHTML = '<span style="color: #ff4d4f;">分析失败</span>';
+                        knowledgePointsSpan.innerHTML = '<span style="color: #ff4d4f;">分析失败</span>';
+                    }
+                })
+                .catch(error => {
+                    console.error('分析失败:', error);
+                    difficultySpan.innerHTML = '<span style="color: #ff4d4f;">分析失败</span>';
+                    knowledgePointsSpan.innerHTML = '<span style="color: #ff4d4f;">分析失败</span>';
+                });
+        }
+
+        function analyzeAllComments(questionId) {
+            axios.get(`/api/questions/${questionId}`)
+                .then(response => {
+                    const data = response.data;
+                    const question = data.question || data;
+                    const comments = [];
+                    
+                    if (question.answers) {
+                        question.answers.forEach(answer => {
+                            if (answer.comments) {
+                                answer.comments.forEach(comment => {
+                                    comments.push(`评论作者: ${comment.author}\n评论内容: ${comment.content}`);
+                                });
+                            }
+                        });
+                    }
+                    
+                    if (comments.length === 0) {
+                        alert('暂无评论可分析');
+                        return;
+                    }
+                    
+                    const analysisDiv = document.getElementById(`comments-analysis-${questionId}`);
+                    analysisDiv.style.display = 'block';
+                    analysisDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading-spinner"></div><p style="margin-top: 12px;">AI正在分析评论...</p></div>';
+                    
+                    axios.post('/api/evaluation/analyze-comments', { comments: comments })
+                        .then(response => {
+                            const result = response.data;
+                            if (result.success) {
+                                analysisDiv.innerHTML = `
+                                    <div class="evaluation-section">
+                                        <div class="title">AI评论分析报告</div>
+                                        <div style="white-space: pre-wrap; font-size: 14px; line-height: 1.6; margin-top: 12px;">${result.analysis}</div>
+                                    </div>
+                                `;
+                            } else {
+                                analysisDiv.innerHTML = `<div style="padding: 16px; background-color: #fff7f0; border-radius: 6px; color: #fa8c16;">分析失败: ${result.message}</div>`;
+                            }
+                        })
+                        .catch(error => {
+                            analysisDiv.innerHTML = `<div style="padding: 16px; background-color: #fff7f0; border-radius: 6px; color: #fa8c16;">分析失败: ${error.message}</div>`;
+                        });
+                });
+        }
+
+        function loadQuestionDetail() {
+            axios.get(`/api/questions/${questionId}`)
+                .then(response => {
+                    const data = response.data;
+                    const question = data.question || data;
+                    const evaluation = data.evaluation;
+                    const knowledgePointDetails = data.knowledgePointDetails;
+                    
+                    const container = document.getElementById('question-detail');
+                    
+                    let html = `
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="question-info">
+                                    <h1>${question.title}</h1>
+                                    <div class="content">${question.content}</div>
+                                    <div class="meta">
+                                        <span class="author">${question.author}</span>
+                                        <span>${new Date(question.createTime).toLocaleString()}</span>
+                                        <span>回答 ${question.answerCount}</span>
+                                        <span>点赞 ${question.likeCount}</span>
+                                    </div>
+                                    <div style="margin-top: 12px;">
+                                        <span style="font-size: 13px; font-weight: 600; color: #333;">难度：</span>
+                                        ${getDifficultyTag(question.difficulty)}
+                                    </div>
+                                    <div style="margin-top: 8px;">
+                                        <span style="font-size: 13px; font-weight: 600; color: #333;">知识点：</span>
+                                        <div id="knowledge-points-list" class="knowledge-tags" style="display: inline-block; margin-left: 4px;"></div>
+                                    </div>
+                                    ${knowledgePointDetails && Object.keys(knowledgePointDetails).length > 0 ? `
+                                    <div style="margin-top: 12px; padding: 12px; background: #f6ffed; border-radius: 6px; border: 1px solid #b7eb8f;">
+                                        <div style="font-size: 13px; font-weight: 600; color: #52c41a; margin-bottom: 8px;">📚 知识点详情（来自KnowledgePoint服务）</div>
+                                        ${Object.entries(knowledgePointDetails).map(([name, kp]) => `
+                                            <div style="font-size: 12px; color: #333; margin-bottom: 4px;">
+                                                <strong>${name}</strong>${kp.description ? ' - ' + kp.description : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    ` : ''}
+                                    <div style="margin-top: 12px; padding: 12px; background: #e6f7ff; border-radius: 6px; border: 1px solid #91d5ff; ${evaluation ? '' : 'display:none;'}" id="eval-section-${question.id}">
+                                        <div style="font-size: 13px; font-weight: 600; color: #1890ff; margin-bottom: 8px;">📊 评估信息（来自Evaluation服务）</div>
+                                        <div style="font-size: 12px; color: #333;" id="eval-info-${question.id}">
+                                            ${evaluation ? `评估难度: ${evaluation.difficulty || '未知'} | 评估时间: ${evaluation.evaluateTime ? new Date(evaluation.evaluateTime).toLocaleString() : '未知'}` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="evaluation-section" style="margin-top: 16px;">
+                                        <div class="title">AI智能分析</div>
+                                        <div class="evaluation-content">
+                                            <div class="evaluation-item">
+                                                <label>难度评估:</label>
+                                                <span id="difficulty-${question.id}">${question.difficulty ? getDifficultyTag(question.difficulty) : '<span style="color: #999;">待分析</span>'}</span>
+                                            </div>
+                                            <div class="evaluation-item">
+                                                <label>提取知识点:</label>
+                                                <span id="knowledge-points-${question.id}" style="font-size: 14px;">${question.knowledgePoints && question.knowledgePoints.length > 0 ? question.knowledgePoints.join(', ') : '<span style="color: #999;">待分析</span>'}</span>
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-outline" style="margin-top: 12px; padding: 4px 12px; font-size: 12px;" onclick="analyzeQuestion('${question.id}', '${question.title}')">重新分析问题</button>
+                                    </div>
+                                    <div class="actions">
+                                        <button class="btn btn-primary" onclick="likeQuestion('${question.id}')">点赞</button>
+                                        <button class="btn btn-outline" onclick="analyzeAllComments('${question.id}')">AI分析评论</button>
+                                        <a href="/" class="btn btn-outline">返回首页</a>
+                                        <button class="btn btn-outline" style="color: #ff4d4f;" onclick="deleteQuestion('${question.id}')">删除问题</button>
+                                    </div>
+                                    <div id="comments-analysis-${question.id}" class="comments-analysis" style="display: none; margin-top: 20px;"></div>
+                                </div>
+                                
+                                <div class="card-header" style="border-top: 1px solid #f0f0f0; margin-top: 24px;">
+                                    回答列表 (${question.answerCount})
+                                </div>
+                                <div id="answers-list">
+                    `;
+                    
+                    if (question.answers) {
+                        question.answers.forEach((answer, index) => {
+                            html += `
+                                <div class="answer-item">
+                                    <div class="author">${answer.author}</div>
+                                    <div class="content">${answer.content}</div>
+                                    <div class="meta">
+                                        <span>${new Date(answer.createTime).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                                        <span>👍 ${answer.likeCount}</span>
+                                        ${answer.score != null ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:12px;background:${answer.score >= 80 ? '#f6ffed' : answer.score >= 60 ? '#fff7e6' : '#fff2f0'};color:${answer.score >= 80 ? '#52c41a' : answer.score >= 60 ? '#fa8c16' : '#ff4d4f'};border:1px solid ${answer.score >= 80 ? '#b7eb8f' : answer.score >= 60 ? '#ffd591' : '#ffccc7'};">🤖 AI ${answer.score}分 ${answer.score >= 80 ? '优秀' : answer.score >= 60 ? '良好' : '需改进'}</span>` : ''}
+                                    </div>
+                                    <div class="actions">
+                                        <button class="btn btn-outline" onclick="likeAnswer('${question.id}', '${answer.id}')">点赞</button>
+                                    </div>
+                                    
+                                    <div class="comment-list">
+                            `;
+                            
+                            if (answer.comments) {
+                                answer.comments.forEach(comment => {
+                                    html += `
+                                        <div class="comment-item">
+                                            <div class="author">${comment.author}</div>
+                                            <div class="content">${comment.content}</div>
+                                            <div class="meta">
+                                                <span>${new Date(comment.createTime).toLocaleString()}</span>
+                                                <span>👍 ${comment.likeCount}</span>
+                                                ${comment.score != null ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:12px;background:${comment.score >= 80 ? '#f6ffed' : comment.score >= 60 ? '#fff7e6' : '#fff2f0'};color:${comment.score >= 80 ? '#52c41a' : comment.score >= 60 ? '#fa8c16' : '#ff4d4f'};border:1px solid ${comment.score >= 80 ? '#b7eb8f' : comment.score >= 60 ? '#ffd591' : '#ffccc7'};">🤖 AI ${comment.score}分 ${comment.score >= 80 ? '优秀' : comment.score >= 60 ? '良好' : '需改进'}</span>` : ''}
+                                            </div>
+                                            <div class="actions" style="margin-top: 8px;">
+                                                <button class="btn btn-outline" style="padding: 4px 12px; font-size: 12px;" onclick="likeComment('${question.id}', '${answer.id}', '${comment.id}')">点赞</button>
+                                                <button class="btn btn-outline" style="padding: 4px 12px; font-size: 12px;" onclick="toggleCommentForm('${answer.id}', '${comment.id}')">评论</button>
+                                                <button class="btn btn-outline" style="padding: 4px 12px; font-size: 12px; color: #ff4d4f;" onclick="deleteComment('${question.id}', '${answer.id}', '${comment.id}')">删除</button>
+                                            </div>
+                                            <div id="comment-form-${answer.id}-${comment.id}" class="comment-form" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f0;">
+                                                <textarea id="comment-reply-content-${answer.id}-${comment.id}" placeholder="请输入你的回复" style="width: 100%; padding: 8px; border: 1px solid #d0d0d0; border-radius: 4px; font-size: 13px; resize: vertical; min-height: 60px;"></textarea>
+                                                <input type="text" id="comment-reply-author-${answer.id}-${comment.id}" placeholder="作者" style="width: 100%; padding: 8px; border: 1px solid #d0d0d0; border-radius: 4px; font-size: 13px; margin-top: 8px;">
+                                                <div style="margin-top: 8px; text-align: right;">
+                                                    <button class="btn btn-outline" style="padding: 4px 12px; font-size: 12px;" onclick="addReply('${question.id}', '${answer.id}', '${comment.id}')">提交回复</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                });
+                            }
+                            
+                            html += `
+                                    </div>
+                                    <div class="actions" style="margin-top: 16px;">
+                                        <button class="btn btn-outline" onclick="toggleAnswerCommentForm('${answer.id}')">添加评论</button>
+                                    </div>
+                                    <div id="answer-comment-form-${answer.id}" class="form-group" style="margin-top: 16px; display: none;">
+                                        <label for="comment-content-${answer.id}">添加评论</label>
+                                        <textarea id="comment-content-${answer.id}" name="comment-content-${answer.id}" placeholder="请输入你的评论"></textarea>
+                                        <input type="text" id="comment-author-${answer.id}" name="comment-author-${answer.id}" placeholder="作者">
+                                        <div class="form-actions" style="margin-top: 12px;">
+                                            <button type="button" class="btn btn-outline" onclick="addComment('${question.id}', '${answer.id}')">提交评论</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        html += `
+                            <div style="padding: 40px; text-align: center; color: #999;">
+                                暂无回答，快来抢沙发吧！
+                            </div>
+                        `;
+                    }
+                    
+                    html += `
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.innerHTML = html;
+                    loadKnowledgePoints(question.knowledgePointIds);
+                });
+        }
+        
+        loadQuestionDetail();
+    </script>
+
+    <div th:replace="fragments :: footer"></div>
+<div th:replace="fragments :: spirit-widget"></div>
+</body>
+</html>

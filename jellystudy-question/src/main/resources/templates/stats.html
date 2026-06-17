@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('数据统计 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            color: white;
+            text-align: center;
+        }
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .stat-card .label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .stat-card.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .stat-card.success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .stat-card.warning {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        .stat-card.info {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+        .y-axis {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 40px;
+            width: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px 0;
+            font-size: 12px;
+            color: #999;
+        }
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: calc(100% - 40px);
+            padding: 20px 20px 20px 40px;
+            gap: 40px;
+        }
+        .bar-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            width: 60px;
+        }
+        .bar {
+            width: 100%;
+            background: linear-gradient(180deg, #0f88eb 0%, #0c76d1 100%);
+            border-radius: 8px 8px 0 0;
+            transition: height 0.5s ease;
+            min-height: 10px;
+        }
+        .bar.easy {
+            background: linear-gradient(180deg, #52c41a 0%, #3fb419 100%);
+        }
+        .bar.medium {
+            background: linear-gradient(180deg, #fa8c16 0%, #d47013 100%);
+        }
+        .bar.hard {
+            background: linear-gradient(180deg, #ff4d4f 0%, #d9363e 100%);
+        }
+        .bar-label {
+            font-size: 12px;
+            color: #666;
+            white-space: nowrap;
+            margin-top: 8px;
+        }
+        .bar-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .difficulty-legend {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin-top: 32px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+        .legend-color.easy {
+            background-color: #52c41a;
+        }
+        .legend-color.medium {
+            background-color: #fa8c16;
+        }
+        .legend-color.hard {
+            background-color: #ff4d4f;
+        }
+        .evaluation-summary {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .evaluation-item {
+            flex: 1;
+            min-width: 200px;
+            padding: 16px;
+            background-color: #fafafa;
+            border-radius: var(--radius-md);
+        }
+        .evaluation-item .label {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+        .evaluation-item .value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+        }
+        .evaluation-item .subtext {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('stats')"></div>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">数据统计概览</div>
+            <div class="card-body">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="value" id="question-count">--</div>
+                        <div class="label">问题总数</div>
+                    </div>
+                    <div class="stat-card secondary">
+                        <div class="value" id="answer-count">--</div>
+                        <div class="label">回答总数</div>
+                    </div>
+                    <div class="stat-card success">
+                        <div class="value" id="knowledge-count">--</div>
+                        <div class="label">知识点总数</div>
+                    </div>
+                    <div class="stat-card warning">
+                        <div class="value" id="avg-score">--</div>
+                        <div class="label">平均评分</div>
+                    </div>
+                    <div class="stat-card info">
+                        <div class="value" id="question-evaluations">--</div>
+                        <div class="label">问题评估数</div>
+                    </div>
+                    <div class="stat-card danger">
+                        <div class="value" id="answer-evaluations">--</div>
+                        <div class="label">回答评估数</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">问题难度分布</div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <div class="y-axis">
+                        <span>2</span>
+                        <span>1</span>
+                        <span>0</span>
+                    </div>
+                    <div class="bar-chart">
+                        <div class="bar-wrapper">
+                            <div class="bar easy" id="easy-bar" style="height: 10%"></div>
+                            <span class="bar-value" id="easy-count">--</span>
+                            <span class="bar-label">简单</span>
+                        </div>
+                        <div class="bar-wrapper">
+                            <div class="bar medium" id="medium-bar" style="height: 10%"></div>
+                            <span class="bar-value" id="medium-count">--</span>
+                            <span class="bar-label">中等</span>
+                        </div>
+                        <div class="bar-wrapper">
+                            <div class="bar hard" id="hard-bar" style="height: 10%"></div>
+                            <span class="bar-value" id="hard-count">--</span>
+                            <span class="bar-label">困难</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="difficulty-legend">
+                    <div class="legend-item">
+                        <span class="legend-color easy"></span>
+                        <span style="font-size: 13px;">简单</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color medium"></span>
+                        <span style="font-size: 13px;">中等</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color hard"></span>
+                        <span style="font-size: 13px;">困难</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">AI评估统计</div>
+            <div class="card-body">
+                <div class="evaluation-summary">
+                    <div class="evaluation-item">
+                        <div class="label">问题评估覆盖率</div>
+                        <div class="value" id="question-coverage">--%</div>
+                        <div class="subtext">已评估问题占总问题比例</div>
+                    </div>
+                    <div class="evaluation-item">
+                        <div class="label">回答评估覆盖率</div>
+                        <div class="value" id="answer-coverage">--%</div>
+                        <div class="subtext">已评估回答占总回答比例</div>
+                    </div>
+                    <div class="evaluation-item">
+                        <div class="label">平均难度等级</div>
+                        <div class="value" id="avg-difficulty">--</div>
+                        <div class="subtext">所有问题的平均难度</div>
+                    </div>
+                    <div class="evaluation-item">
+                        <div class="label">优秀回答率</div>
+                        <div class="value" id="excellent-rate">--%</div>
+                        <div class="subtext">评分≥80分的回答比例</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+
+    
+    <script>
+        function loadStats() {
+            axios.get('/api/questions/stats')
+                .then(response => {
+                    const stats = response.data;
+                    
+                    document.getElementById('question-count').textContent = stats.totalQuestions || 0;
+                    document.getElementById('answer-count').textContent = stats.totalAnswers || 0;
+                    document.getElementById('avg-score').textContent = stats.avgScore ? stats.avgScore + '分' : '--';
+                    
+                    document.getElementById('question-evaluations').textContent = stats.questionEvaluations || 0;
+                    document.getElementById('answer-evaluations').textContent = stats.answerEvaluations || 0;
+                    
+                    const difficultyStats = stats.difficultyStats || {};
+                    const easy = difficultyStats.easy || 0;
+                    const medium = difficultyStats.medium || 0;
+                    const hard = difficultyStats.hard || 0;
+                    const totalDifficulty = easy + medium + hard;
+                    
+                    document.getElementById('easy-count').textContent = easy;
+                    document.getElementById('medium-count').textContent = medium;
+                    document.getElementById('hard-count').textContent = hard;
+                    
+                    if (totalDifficulty > 0) {
+                        const maxCount = Math.max(easy, medium, hard);
+                        document.getElementById('easy-bar').style.height = (easy / maxCount * 80 + 10) + '%';
+                        document.getElementById('medium-bar').style.height = (medium / maxCount * 80 + 10) + '%';
+                        document.getElementById('hard-bar').style.height = (hard / maxCount * 80 + 10) + '%';
+                    } else {
+                        document.getElementById('easy-bar').style.height = '10%';
+                        document.getElementById('medium-bar').style.height = '10%';
+                        document.getElementById('hard-bar').style.height = '10%';
+                    }
+                    
+                    const totalQuestions = stats.totalQuestions || 1;
+                    document.getElementById('question-coverage').textContent = 
+                        Math.round((totalDifficulty / totalQuestions) * 100) + '%';
+                    
+                    const totalAnswers = stats.totalAnswers || 1;
+                    const evaluatedAnswers = stats.answerEvaluations || 0;
+                    document.getElementById('answer-coverage').textContent = 
+                        Math.round((evaluatedAnswers / totalAnswers) * 100) + '%';
+                    
+                    if (totalDifficulty > 0) {
+                        const avgDifficulty = (easy * 1 + medium * 2 + hard * 3) / totalDifficulty;
+                        let avgDiffText = '中等';
+                        if (avgDifficulty < 1.5) avgDiffText = '简单';
+                        else if (avgDifficulty > 2.5) avgDiffText = '困难';
+                        document.getElementById('avg-difficulty').textContent = avgDiffText;
+                    } else {
+                        document.getElementById('avg-difficulty').textContent = '--';
+                    }
+                    
+                    const excellentAnswers = stats.excellentAnswers || 0;
+                    document.getElementById('excellent-rate').textContent = 
+                        Math.round((excellentAnswers / Math.max(totalAnswers, 1)) * 100) + '%';
+                })
+                .catch(error => {
+                    console.error('加载统计数据失败:', error);
+                });
+            
+            axios.get('/api/knowledge-points/count')
+                .then(response => {
+                    document.getElementById('knowledge-count').textContent = response.data || 0;
+                })
+                .catch(error => {
+                    console.error('加载知识点统计失败:', error);
+                    document.getElementById('knowledge-count').textContent = 0;
+                });
+        }
+        
+        loadStats();
+    </script>
+
+    <div th:replace="fragments :: footer"></div>
+<div th:replace="fragments :: spirit-widget"></div>
+</body>
+</html>

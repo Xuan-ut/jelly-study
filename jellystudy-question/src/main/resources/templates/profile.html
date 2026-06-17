@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('个人设置 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .profile-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 24px 0;
+        }
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            background: #fff;
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+        }
+        .profile-avatar-wrapper {
+            position: relative;
+            flex-shrink: 0;
+        }
+        .profile-avatar-large {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0f88eb, #722ed1);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: 700;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .profile-avatar-large:hover {
+            transform: scale(1.05);
+        }
+        .profile-avatar-large img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .avatar-upload-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            font-size: 11px;
+            text-align: center;
+            padding: 3px 0;
+            border-radius: 0 0 44px 44px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .profile-avatar-wrapper:hover .avatar-upload-overlay {
+            opacity: 1;
+        }
+        .profile-header-info {
+            flex: 1;
+        }
+        .profile-header-info h2 {
+            font-size: 22px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .profile-header-info .username {
+            font-size: 14px;
+            color: #999;
+        }
+        .profile-header-info .signature {
+            font-size: 14px;
+            color: #666;
+            margin-top: 6px;
+            font-style: italic;
+        }
+        .profile-header-info .role-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .role-badge.user { background: #e6f7ff; color: #1890ff; }
+        .role-badge.guest { background: #fff7e6; color: #fa8c16; }
+        .profile-header-info .join-date {
+            font-size: 12px;
+            color: #bbb;
+            margin-top: 6px;
+        }
+        .profile-section {
+            background: #fff;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+        }
+        .profile-section h3 {
+            font-size: 17px;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .profile-section h3 .edit-btn {
+            margin-left: auto;
+            font-size: 13px;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-weight: 400;
+        }
+        .profile-section h3 .edit-btn:hover {
+            text-decoration: underline;
+        }
+        .info-display {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .info-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .info-row .info-label {
+            width: 80px;
+            flex-shrink: 0;
+            font-size: 14px;
+            color: #999;
+            padding-top: 2px;
+        }
+        .info-row .info-value {
+            font-size: 14px;
+            color: #333;
+            flex: 1;
+            word-break: break-all;
+        }
+        .info-row .info-value.empty {
+            color: #ccc;
+            font-style: italic;
+        }
+        .profile-form {
+            display: none;
+        }
+        .profile-form.active {
+            display: block;
+        }
+        .profile-form .form-group {
+            margin-bottom: 18px;
+        }
+        .profile-form .form-group label {
+            display: block;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .profile-form .form-group input,
+        .profile-form .form-group textarea {
+            width: 100%;
+            max-width: 400px;
+        }
+        .profile-form .form-group textarea {
+            height: 60px;
+            resize: vertical;
+        }
+        .profile-form .form-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 12px;
+        }
+        .profile-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+        .profile-stat-item {
+            text-align: center;
+            padding: 16px;
+            background: #fafafa;
+            border-radius: var(--radius-md);
+        }
+        .profile-stat-item .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        .profile-stat-item .label {
+            font-size: 13px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .quick-link-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: #fafafa;
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            color: #333;
+            transition: all 0.2s;
+        }
+        .quick-link-card:hover {
+            background: #e6f7ff;
+            transform: translateY(-1px);
+        }
+        .quick-link-card .icon { font-size: 24px; }
+        .quick-link-card .text { font-size: 14px; font-weight: 500; }
+        .quick-link-card .desc { font-size: 12px; color: #999; margin-top: 2px; }
+        .password-strength {
+            display: flex;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        .password-strength .bar {
+            height: 4px;
+            flex: 1;
+            background: #f0f0f0;
+            border-radius: 2px;
+            transition: background 0.3s;
+        }
+        .password-strength .bar.weak { background: #ff4d4f; }
+        .password-strength .bar.medium { background: #fa8c16; }
+        .password-strength .bar.strong { background: #52c41a; }
+        .password-strength-text {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .danger-zone {
+            border: 1px solid #ffccc7;
+            background: #fff2f0;
+        }
+        .danger-zone h3 {
+            color: #ff4d4f;
+            border-bottom-color: #ffccc7;
+        }
+        .avatar-preview {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-top: 8px;
+        }
+        @media (max-width: 768px) {
+            .profile-header { flex-direction: column; text-align: center; }
+            .profile-stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .quick-links { grid-template-columns: 1fr; }
+        }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('profile')"></div>
+
+    <div class="container">
+        <div class="profile-container">
+            <div id="not-logged-in-view" style="display:none;">
+                <div class="plan-login-tip">
+                    <div class="icon">👤</div>
+                    <h2>个人设置</h2>
+                    <p>登录后即可管理您的个人信息</p>
+                    <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
+                        <button class="btn btn-primary" onclick="JellyStudyApp.showRegisterModal()">立即注册</button>
+                        <button class="btn btn-secondary" onclick="JellyStudyApp.showLoginModal()">已有账号登录</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="logged-in-view" style="display:none;">
+                <div class="profile-header">
+                    <div class="profile-avatar-wrapper">
+                        <div class="profile-avatar-large" id="profile-avatar" onclick="document.getElementById('avatar-file-input').click()">U</div>
+                        <div class="avatar-upload-overlay" onclick="document.getElementById('avatar-file-input').click()">更换</div>
+                        <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="handleAvatarUpload(this)">
+                    </div>
+                    <div class="profile-header-info">
+                        <h2 id="profile-nickname">用户</h2>
+                        <div class="username" id="profile-username">@username</div>
+                        <div class="signature" id="profile-signature"></div>
+                        <span class="role-badge user" id="profile-role">正式用户</span>
+                        <div class="join-date" id="profile-join-date"></div>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>📊 我的数据</h3>
+                    <div class="profile-stats-grid">
+                        <div class="profile-stat-item">
+                            <div class="value" id="ps-questions">0</div>
+                            <div class="label">提问</div>
+                        </div>
+                        <div class="profile-stat-item">
+                            <div class="value" id="ps-answers">0</div>
+                            <div class="label">回答</div>
+                        </div>
+                        <div class="profile-stat-item">
+                            <div class="value" id="ps-likes">0</div>
+                            <div class="label">获赞</div>
+                        </div>
+                        <div class="profile-stat-item">
+                            <div class="value" id="ps-study-time">0h</div>
+                            <div class="label">学习时长</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>👤 个人信息 <span class="edit-btn" id="info-edit-toggle" onclick="toggleInfoEdit()">编辑</span></h3>
+                    <div class="info-display" id="info-display">
+                        <div class="info-row">
+                            <span class="info-label">用户名</span>
+                            <span class="info-value" id="display-username">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">昵称</span>
+                            <span class="info-value" id="display-nickname">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">邮箱</span>
+                            <span class="info-value" id="display-email">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">签名</span>
+                            <span class="info-value" id="display-signature">-</span>
+                        </div>
+                    </div>
+                    <div class="profile-form" id="info-edit-form">
+                        <div class="form-group">
+                            <label>用户名</label>
+                            <input type="text" id="edit-username" disabled style="background: #f5f5f5; cursor: not-allowed;">
+                            <div style="font-size: 12px; color: #999; margin-top: 4px;">用户名不可修改</div>
+                        </div>
+                        <div class="form-group">
+                            <label>昵称</label>
+                            <input type="text" id="edit-nickname" placeholder="输入新的昵称" maxlength="20">
+                        </div>
+                        <div class="form-group">
+                            <label>邮箱</label>
+                            <input type="email" id="edit-email" placeholder="输入邮箱地址" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label>个性签名</label>
+                            <textarea id="edit-signature" placeholder="写点什么介绍一下自己吧..." maxlength="100"></textarea>
+                            <div style="font-size: 12px; color: #999; margin-top: 4px;">最多100字</div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-primary" onclick="saveProfile()">保存修改</button>
+                            <button class="btn btn-secondary" onclick="toggleInfoEdit()">取消</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>🔒 修改密码</h3>
+                    <div class="profile-form active">
+                        <div class="form-group">
+                            <label>当前密码</label>
+                            <input type="password" id="old-password" placeholder="请输入当前密码">
+                        </div>
+                        <div class="form-group">
+                            <label>新密码</label>
+                            <input type="password" id="new-password" placeholder="请输入新密码（至少6位）" oninput="checkPasswordStrength(this.value)">
+                            <div class="password-strength" id="pwd-strength-bars">
+                                <div class="bar"></div>
+                                <div class="bar"></div>
+                                <div class="bar"></div>
+                                <div class="bar"></div>
+                            </div>
+                            <div class="password-strength-text" id="pwd-strength-text"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>确认新密码</label>
+                            <input type="password" id="confirm-password" placeholder="请再次输入新密码">
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-primary" onclick="changePassword()">修改密码</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>🔗 快捷入口</h3>
+                    <div class="quick-links">
+                        <a href="/my-activities" class="quick-link-card">
+                            <div class="icon">📝</div>
+                            <div>
+                                <div class="text">我的动态</div>
+                                <div class="desc">查看提问、回答、评论等记录</div>
+                            </div>
+                        </a>
+                        <a href="/plans" class="quick-link-card">
+                            <div class="icon">📋</div>
+                            <div>
+                                <div class="text">学习计划</div>
+                                <div class="desc">管理和查看学习计划</div>
+                            </div>
+                        </a>
+                        <a href="/progress" class="quick-link-card">
+                            <div class="icon">📊</div>
+                            <div>
+                                <div class="text">学习进度</div>
+                                <div class="desc">查看学习进度和统计</div>
+                            </div>
+                        </a>
+                        <a href="/history" class="quick-link-card">
+                            <div class="icon">📖</div>
+                            <div>
+                                <div class="text">浏览历史</div>
+                                <div class="desc">查看最近浏览记录</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="profile-section danger-zone">
+                    <h3>⚠️ 退出登录</h3>
+                    <p style="font-size: 14px; color: #666; margin-bottom: 16px;">退出当前账号，切换到其他账号或游客模式</p>
+                    <button class="btn btn-secondary" onclick="handleLogout()" style="border-color: #ff4d4f; color: #ff4d4f;">退出登录</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:replace="fragments :: footer"></div>
+
+    <script>
+        var currentUserData = null;
+
+        function checkLoginState() {
+            var user = JellyStudyApp.getUser();
+            if (user && user.role !== 'GUEST') {
+                document.getElementById('not-logged-in-view').style.display = 'none';
+                document.getElementById('logged-in-view').style.display = 'block';
+                loadProfile();
+            } else {
+                document.getElementById('not-logged-in-view').style.display = 'block';
+                document.getElementById('logged-in-view').style.display = 'none';
+            }
+        }
+
+        function loadProfile() {
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+
+            axios.get('/api/users/' + user.id).then(function(response) {
+                currentUserData = response.data || user;
+                renderProfile(currentUserData);
+            }).catch(function() {
+                currentUserData = user;
+                renderProfile(user);
+            });
+
+            loadUserStats(user.id);
+        }
+
+        function renderProfile(user) {
+            var avatarEl = document.getElementById('profile-avatar');
+            if (user.avatar) {
+                avatarEl.innerHTML = '<img src="' + escapeHtml(user.avatar) + '" alt="头像">';
+            } else {
+                avatarEl.textContent = (user.nickname || user.username || 'U').charAt(0).toUpperCase();
+            }
+
+            document.getElementById('profile-nickname').textContent = user.nickname || user.username || '用户';
+            document.getElementById('profile-username').textContent = '@' + (user.username || '');
+            document.getElementById('edit-username').value = user.username || '';
+            document.getElementById('edit-nickname').value = user.nickname || '';
+            document.getElementById('edit-email').value = user.email || '';
+            document.getElementById('edit-signature').value = user.signature || '';
+
+            var sigEl = document.getElementById('profile-signature');
+            if (user.signature) {
+                sigEl.textContent = user.signature;
+                sigEl.style.display = 'block';
+            } else {
+                sigEl.style.display = 'none';
+            }
+
+            var roleBadge = document.getElementById('profile-role');
+            if (user.role === 'GUEST') {
+                roleBadge.textContent = '游客';
+                roleBadge.className = 'role-badge guest';
+            } else {
+                roleBadge.textContent = '正式用户';
+                roleBadge.className = 'role-badge user';
+            }
+
+            if (user.createTime) {
+                var d = new Date(user.createTime);
+                document.getElementById('profile-join-date').textContent = '加入于 ' + d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+            }
+
+            document.getElementById('display-username').textContent = user.username || '-';
+            document.getElementById('display-nickname').textContent = user.nickname || '-';
+
+            var emailEl = document.getElementById('display-email');
+            if (user.email) {
+                emailEl.textContent = user.email;
+                emailEl.className = 'info-value';
+            } else {
+                emailEl.textContent = '未设置';
+                emailEl.className = 'info-value empty';
+            }
+
+            var sigDisplayEl = document.getElementById('display-signature');
+            if (user.signature) {
+                sigDisplayEl.textContent = user.signature;
+                sigDisplayEl.className = 'info-value';
+            } else {
+                sigDisplayEl.textContent = '未填写';
+                sigDisplayEl.className = 'info-value empty';
+            }
+        }
+
+        function toggleInfoEdit() {
+            var display = document.getElementById('info-display');
+            var form = document.getElementById('info-edit-form');
+            var toggle = document.getElementById('info-edit-toggle');
+            if (form.classList.contains('active')) {
+                form.classList.remove('active');
+                display.style.display = 'flex';
+                toggle.textContent = '编辑';
+            } else {
+                form.classList.add('active');
+                display.style.display = 'none';
+                toggle.textContent = '取消编辑';
+            }
+        }
+
+        function loadUserStats(userId) {
+            axios.get('/api/activities/user/' + userId + '/stats')
+                .then(function(response) {
+                    var stats = response.data || {};
+                    document.getElementById('ps-questions').textContent = stats.questionCount || 0;
+                    document.getElementById('ps-answers').textContent = stats.answerCount || 0;
+                    document.getElementById('ps-likes').textContent = stats.likeCount || 0;
+                })
+                .catch(function() {});
+
+            axios.get('/api/study-plans/progress/user/' + userId)
+                .then(function(response) {
+                    var stats = response.data || {};
+                    var total = stats.totalStudyTime || stats.totalStudyDuration || 0;
+                    document.getElementById('ps-study-time').textContent = Math.round(total / 60 * 10) / 10 + 'h';
+                })
+                .catch(function() {});
+        }
+
+        function saveProfile() {
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+
+            var nickname = document.getElementById('edit-nickname').value.trim();
+            var email = document.getElementById('edit-email').value.trim();
+            var signature = document.getElementById('edit-signature').value.trim();
+
+            if (!nickname) {
+                alert('昵称不能为空');
+                return;
+            }
+
+            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                alert('邮箱格式不正确');
+                return;
+            }
+
+            axios.put('/api/users/' + user.id + '/info', {
+                nickname: nickname,
+                email: email,
+                signature: signature
+            }).then(function(response) {
+                if (response.data.success) {
+                    var updatedUser = response.data.user;
+                    var savedUser = JellyStudyApp.getUser();
+                    savedUser.nickname = updatedUser.nickname;
+                    savedUser.avatar = updatedUser.avatar;
+                    savedUser.signature = updatedUser.signature;
+                    savedUser.email = updatedUser.email;
+                    localStorage.setItem('jellystudy_user', JSON.stringify(savedUser));
+                    if (typeof JellyStudyApp.updateNavUI === 'function') JellyStudyApp.updateNavUI();
+                    currentUserData = updatedUser;
+                    renderProfile(updatedUser);
+                    toggleInfoEdit();
+                    alert('保存成功！');
+                } else {
+                    alert('保存失败: ' + (response.data.message || ''));
+                }
+            }).catch(function(error) {
+                alert('保存失败: ' + error.message);
+            });
+        }
+
+        function handleAvatarUpload(input) {
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+            if (!input.files || !input.files[0]) return;
+
+            var file = input.files[0];
+            if (!file.type.startsWith('image/')) {
+                alert('请选择图片文件');
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                alert('图片不能超过2MB');
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('file', file);
+
+            axios.post('/api/users/' + user.id + '/avatar', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            }).then(function(response) {
+                if (response.data.success) {
+                    var avatarUrl = response.data.avatarUrl;
+                    var savedUser = JellyStudyApp.getUser();
+                    savedUser.avatar = avatarUrl;
+                    localStorage.setItem('jellystudy_user', JSON.stringify(savedUser));
+                    if (typeof JellyStudyApp.updateNavUI === 'function') JellyStudyApp.updateNavUI();
+                    var avatarEl = document.getElementById('profile-avatar');
+                    avatarEl.innerHTML = '<img src="' + escapeHtml(avatarUrl) + '" alt="头像">';
+                    alert('头像更新成功！');
+                } else {
+                    alert('上传失败: ' + (response.data.message || ''));
+                }
+            }).catch(function(error) {
+                alert('上传失败: ' + error.message);
+            });
+
+            input.value = '';
+        }
+
+        function checkPasswordStrength(pwd) {
+            var bars = document.querySelectorAll('#pwd-strength-bars .bar');
+            var text = document.getElementById('pwd-strength-text');
+            var strength = 0;
+
+            if (pwd.length >= 6) strength++;
+            if (pwd.length >= 10) strength++;
+            if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) strength++;
+            if (/[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd)) strength++;
+
+            bars.forEach(function(bar, i) {
+                bar.className = 'bar';
+                if (i < strength) {
+                    if (strength <= 1) bar.classList.add('weak');
+                    else if (strength <= 2) bar.classList.add('medium');
+                    else bar.classList.add('strong');
+                }
+            });
+
+            var labels = ['', '弱', '一般', '较强', '强'];
+            text.textContent = pwd.length > 0 ? '密码强度: ' + labels[strength] : '';
+        }
+
+        function changePassword() {
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+
+            var oldPwd = document.getElementById('old-password').value;
+            var newPwd = document.getElementById('new-password').value;
+            var confirmPwd = document.getElementById('confirm-password').value;
+
+            if (!oldPwd) { alert('请输入当前密码'); return; }
+            if (!newPwd) { alert('请输入新密码'); return; }
+            if (newPwd.length < 6) { alert('新密码至少6位'); return; }
+            if (newPwd !== confirmPwd) { alert('两次输入的密码不一致'); return; }
+
+            axios.put('/api/users/' + user.id + '/password', {
+                oldPassword: oldPwd,
+                newPassword: newPwd
+            }).then(function(response) {
+                if (response.data.success) {
+                    alert('密码修改成功！');
+                    document.getElementById('old-password').value = '';
+                    document.getElementById('new-password').value = '';
+                    document.getElementById('confirm-password').value = '';
+                    checkPasswordStrength('');
+                } else {
+                    alert('修改失败: ' + (response.data.message || ''));
+                }
+            }).catch(function(error) {
+                alert('修改失败: ' + error.message);
+            });
+        }
+
+        function handleLogout() {
+            if (confirm('确定要退出登录吗？')) {
+                JellyStudyApp.logout();
+                window.location.href = '/';
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        afterLogin = function(user) { checkLoginState(); };
+        afterLogout = function() { checkLoginState(); };
+
+        checkLoginState();
+    </script>
+</body>
+</html>

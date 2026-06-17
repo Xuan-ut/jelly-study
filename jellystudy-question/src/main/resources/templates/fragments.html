@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title, extraCss)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">JellyStudy</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/app.css">
+    <th:block th:replace="${extraCss}"></th:block>
+</head>
+<body>
+<div th:fragment="header(activePage)">
+    <div class="header">
+        <div class="header-content">
+            <a href="/" class="logo">JellyStudy</a>
+            <div class="nav">
+                <a href="/" th:classappend="${activePage == 'index'} ? 'active' : ''">首页</a>
+                <a href="/companion" th:classappend="${activePage == 'companion'} ? 'active' : ''">🧬 AI精灵</a>
+                <a href="/ai" th:classappend="${activePage == 'ai'} ? 'active' : ''">AI智能中心</a>
+                <a href="/knowledge-points" th:classappend="${activePage == 'knowledge'} ? 'active' : ''">知识点</a>
+                <a href="/plans" id="nav-plan-link" th:classappend="${activePage == 'plans'} ? 'active' : ''">学习计划</a>
+                <a href="/progress" th:classappend="${activePage == 'progress'} ? 'active' : ''">学习进度</a>
+                <a href="/history" th:classappend="${activePage == 'history'} ? 'active' : ''">浏览历史</a>
+                <a href="/stats" th:classappend="${activePage == 'stats'} ? 'active' : ''">数据统计</a>
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="global-search-input" placeholder="搜索问题..." onkeyup="handleGlobalSearch(event)">
+                </div>
+                <div class="nav-user-info" id="nav-user-info" style="display: none;">
+                    <div class="nav-user-dropdown">
+                        <div class="nav-user-avatar" id="nav-user-avatar" onclick="toggleUserMenu()">U</div>
+                        <div class="nav-user-dropdown-menu" id="nav-user-menu">
+                            <div class="dropdown-header">
+                                <span class="dropdown-nickname" id="dropdown-nickname">用户</span>
+                                <span class="dropdown-role" id="dropdown-role">正式用户</span>
+                            </div>
+                            <a href="/profile" class="dropdown-item">👤 个人设置</a>
+                            <a href="/my-activities" class="dropdown-item">📝 我的动态</a>
+                            <a href="/plans" class="dropdown-item">📋 学习计划</a>
+                            <a href="/progress" class="dropdown-item">📊 学习进度</a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" class="dropdown-item dropdown-item-danger" onclick="event.preventDefault();JellyStudyApp.logout()">🚪 退出登录</a>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm" id="nav-login-btn" onclick="JellyStudyApp.showLoginModal()">登录</button>
+                <a href="/ask" class="btn-ask">提问</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="js-modal js-modal-overlay" id="modal-login">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>用户登录</h3>
+                <button class="modal-close" onclick="JellyStudyApp.closeAllModals()">&times;</button>
+            </div>
+            <form onsubmit="JellyStudyApp.handleLoginSubmit(event)">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="input-login-username" required placeholder="请输入用户名">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="input-login-password" required placeholder="请输入密码">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">登录</button>
+                <p style="text-align: center; margin-top: 16px; color: #666;">
+                    还没有账号？<a href="#" onclick="event.preventDefault();JellyStudyApp.showRegisterModal()">立即注册</a>
+                    &nbsp;|&nbsp;
+                    <a href="#" onclick="event.preventDefault();JellyStudyApp.handleGuestLogin()">游客体验</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <div class="js-modal js-modal-overlay" id="modal-register">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>用户注册</h3>
+                <button class="modal-close" onclick="JellyStudyApp.closeAllModals()">&times;</button>
+            </div>
+            <form onsubmit="JellyStudyApp.handleRegisterSubmit(event)">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="input-reg-username" required placeholder="请输入用户名">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="input-reg-password" required placeholder="请输入密码">
+                </div>
+                <div class="form-group">
+                    <label>昵称</label>
+                    <input type="text" id="input-reg-nickname" placeholder="请输入昵称（可选）">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">注册</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="js-modal js-modal-overlay" id="modal-upgrade">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>升级为正式用户</h3>
+                <button class="modal-close" onclick="JellyStudyApp.closeAllModals()">&times;</button>
+            </div>
+            <div style="text-align: center; padding: 20px 0;">
+                <div style="font-size: 48px; margin-bottom: 16px;">🔒</div>
+                <p style="font-size: 16px; color: #333; margin-bottom: 8px;">学习计划功能需要登录后使用</p>
+                <p style="font-size: 14px; color: #999; margin-bottom: 24px;">注册账号即可创建和管理您的学习计划</p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button class="btn btn-primary" onclick="JellyStudyApp.showRegisterModal()">立即注册</button>
+                    <button class="btn btn-secondary" onclick="JellyStudyApp.showLoginModal()">已有账号登录</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        function handleGlobalSearch(event) {
+            if (event.key === 'Enter') {
+                var keyword = document.getElementById('global-search-input').value.trim();
+                if (keyword) {
+                    window.location.href = '/?search=' + encodeURIComponent(keyword);
+                }
+            }
+        }
+
+        function toggleUserMenu() {
+            var menu = document.getElementById('nav-user-menu');
+            if (menu) {
+                menu.classList.toggle('show');
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            var menu = document.getElementById('nav-user-menu');
+            var avatar = document.getElementById('nav-user-avatar');
+            if (menu && !menu.contains(e.target) && avatar && !avatar.contains(e.target)) {
+                menu.classList.remove('show');
+            }
+        });
+    </script>
+</div>
+
+<div th:fragment="footer">
+    <div class="footer">
+        <div class="footer-content">
+            <p>© 2026 JellyStudy. 知识问答与学习平台</p>
+        </div>
+    </div>
+</div>
+
+<!-- ====== 悬浮精灵挂件 (小火人风格 - 悬浮陪伴) ====== -->
+<div th:fragment="spirit-widget">
+    <style>
+        /* ===== 悬浮精灵主体 ===== */
+        #spirit-float-widget {
+            position: fixed; z-index: 99990; user-select: none;
+            cursor: grab; transition: filter 0.3s ease;
+        }
+        #spirit-float-widget:active { cursor: grabbing; }
+        #spirit-float-widget.dragging { transition: none; }
+
+        /* ===== 精灵角色球 - 全新炫酷版 ===== */
+        .sfw-body {
+            width: 72px; height: 72px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+            animation: sfw-idle 3s ease-in-out infinite;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* ===== Lv0 种子 - 萌芽微光 ===== */
+        .sfw-body.lv0 {
+            width: 56px; height: 56px;
+            background:
+                radial-gradient(circle at 35% 30%, rgba(255,255,255,0.8) 0%, transparent 40%),
+                radial-gradient(circle at 65% 70%, rgba(255,255,255,0.4) 0%, transparent 30%),
+                linear-gradient(135deg, #7dd3fc 0%, #38bdf8 30%, #22d3ee 60%, #a5f3fc 100%);
+            box-shadow:
+                0 0 20px rgba(56,189,248,0.5),
+                0 0 40px rgba(56,189,248,0.2),
+                inset 0 -8px 20px rgba(0,0,0,0.08),
+                inset 0 8px 16px rgba(255,255,255,0.4);
+        }
+        .sfw-body.lv0::before {
+            content: ''; position: absolute; inset: -6px; border-radius: 50%;
+            border: 2px solid rgba(125,211,252,0.4);
+            animation: sfw-ring-rotate 10s linear infinite;
+            border-top-color: rgba(125,211,252,0.9); border-right-color: rgba(167,243,252,0.7);
+        }
+        /* Lv0 微光粒子 */
+        .sfw-body.lv0::after {
+            content: ''; position: absolute; inset: -2px; border-radius: 50%;
+            box-shadow:
+                0 0 15px rgba(56,189,248,0.6), 0 0 30px rgba(56,189,248,0.3);
+            animation: sfw-pulse-glow 2.5s ease-in-out infinite;
+        }
+        @keyframes sfw-pulse-glow {
+            0%,100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+        .sfw-body.lv0 .sfw-eye { width: 9px; height: 11px; }
+        .sfw-body.lv0 .sfw-pupil { width: 5px; height: 6px; }
+        .sfw-body.lv0 .sfw-mouth { width: 7px; height: 3px; }
+
+        /* ===== Lv1 芽苗 - 翠绿生机 ===== */
+        .sfw-body.lv1 {
+            width: 64px; height: 64px;
+            background:
+                radial-gradient(circle at 30% 25%, rgba(255,255,255,0.85) 0%, transparent 35%),
+                radial-gradient(circle at 70% 75%, rgba(255,255,255,0.35) 0%, transparent 28%),
+                linear-gradient(145deg, #86efac 0%, #4ade80 25%, #22c55e 55%, #16a34a 80%, #15803d 100%);
+            box-shadow:
+                0 0 25px rgba(74,222,128,0.55),
+                0 0 50px rgba(74,222,128,0.25),
+                0 8px 32px rgba(22,163,74,0.3),
+                inset 0 -10px 24px rgba(0,0,0,0.1),
+                inset 0 10px 18px rgba(255,255,255,0.45);
+        }
+        .sfw-body.lv1::before {
+            content: ''; position: absolute; inset: -6px; border-radius: 50%;
+            border: 2px solid rgba(134,239,172,0.4);
+            animation: sfw-ring-rotate 9s linear infinite;
+            border-top-color: rgba(132,204,22,0.95); border-left-color: rgba(163,230,53,0.75);
+        }
+        .sfw-body.lv1::after {
+            content: ''; position: absolute; inset: -3px; border-radius: 50%;
+            box-shadow: 0 0 18px rgba(74,222,128,0.65), 0 0 36px rgba(74,222,128,0.3);
+            animation: sfw-pulse-glow 2.2s ease-in-out infinite;
+        }
+        /* Lv1 叶子装饰 */
+        .sfw-body.lv1 .sfw-leaf-left,
+        .sfw-body.lv1 .sfw-leaf-right {
+            position: absolute; top: -6px; width: 14px; height: 11px;
+            background: linear-gradient(135deg, #bef264, #84cc16, #65a30d);
+            border-radius: 2px 80% 2px 80%;
+            box-shadow: 0 2px 6px rgba(21,128,61,0.3);
+            animation: sfw-leaf-sway 3s ease-in-out infinite;
+        }
+        .sfw-body.lv1 .sfw-leaf-left { left: -8px; transform: rotate(-35deg); }
+        .sfw-body.lv1 .sfw-leaf-right { right: -8px; transform: rotate(35deg) scaleX(-1); animation-delay: -1.5s; }
+        @keyframes sfw-leaf-sway {
+            0%,100% { transform: rotate(-35deg) translateY(0); }
+            50% { transform: rotate(-28deg) translateY(-3px); }
+        }
+
+        /* ===== Lv2 幼灵 - 灵动之翼 ===== */
+        .sfw-body.lv2 {
+            width: 72px; height: 72px;
+            background:
+                radial-gradient(circle at 32% 28%, rgba(255,255,255,0.88) 0%, transparent 33%),
+                radial-gradient(circle at 68% 72%, rgba(255,255,255,0.38) 0%, transparent 26%),
+                conic-gradient(from 200deg, #818cf8, #6366f1, #8b5cf6, #a78bfa, #c084fc, #a78bfa, #8b5cf6, #6366f1, #818cf8);
+            box-shadow:
+                0 0 30px rgba(139,92,246,0.55),
+                0 0 60px rgba(139,92,246,0.25),
+                0 10px 36px rgba(99,102,241,0.3),
+                inset 0 -12px 26px rgba(0,0,0,0.12),
+                inset 0 12px 20px rgba(255,255,255,0.48);
+        }
+        .sfw-body.lv2::before {
+            content: ''; position: absolute; inset: -7px; border-radius: 50%;
+            border: 2.5px solid rgba(167,139,250,0.4);
+            animation: sfw-ring-rotate 8s linear infinite;
+            border-top-color: rgba(192,132,252,0.95); border-right-color: rgba(139,92,246,0.8);
+        }
+        .sfw-body.lv2::after {
+            content: ''; position: absolute; inset: -3px; border-radius: 50%;
+            box-shadow: 0 0 22px rgba(139,92,246,0.65), 0 0 44px rgba(139,92,246,0.28);
+            animation: sfw-pulse-glow 2s ease-in-out infinite;
+        }
+        /* Lv2 翅膀 */
+        .sfw-body.lv2 .sfw-wing {
+            position: absolute; top: 14%; width: 20px; height: 32px;
+            background: linear-gradient(180deg,
+                rgba(255,255,255,0.85) 0%,
+                rgba(199,210,254,0.6) 40%,
+                rgba(165,180,252,0.35) 100%);
+            border-radius: 50% 50% 20% 20%;
+            backdrop-filter: blur(2px);
+            box-shadow: 0 0 12px rgba(139,92,246,0.3), inset 0 0 8px rgba(255,255,255,0.5);
+            animation: sfw-wing-flap-lv2 1.6s ease-in-out infinite;
+        }
+        .sfw-body.lv2 .sfw-wing.left { left: -14px; transform-origin: right center; }
+        .sfw-body.lv2 .sfw-wing.right { right: -14px; transform-origin: left center; scaleX(-1); animation-delay: -0.8s; }
+        @keyframes sfw-wing-flap-lv2 {
+            0%,100% { transform: rotate(18deg) scaleY(1); }
+            50% { transform: rotate(6deg) scaleY(0.82); }
+        }
+
+        /* ===== Lv3 成灵 - 炽焰光辉 ===== */
+        .sfw-body.lv3 {
+            width: 82px; height: 82px;
+            background:
+                radial-gradient(circle at 30% 26%, rgba(255,255,255,0.9) 0%, transparent 32%),
+                radial-gradient(circle at 68% 73%, rgba(255,255,255,0.4) 0%, transparent 25%),
+                conic-gradient(from 220deg, #fcd34d, #f59e0b, #f97316, #fb923c, #fbbf24, #fcd34d, #f59e0b, #f97316, #fcd34d);
+            box-shadow:
+                0 0 35px rgba(245,158,11,0.6),
+                0 0 70px rgba(245,158,11,0.3),
+                0 12px 40px rgba(249,115,22,0.35),
+                inset 0 -14px 28px rgba(0,0,0,0.13),
+                inset 0 14px 22px rgba(255,255,255,0.5);
+        }
+        .sfw-body.lv3::before {
+            content: ''; position: absolute; inset: -8px; border-radius: 50%;
+            border: 2.5px solid rgba(251,191,36,0.45);
+            animation: sfw-ring-rotate 7s linear infinite;
+            border-top-color: rgba(252,211,77,0.98); border-bottom-color: rgba(249,115,22,0.8);
+        }
+        .sfw-body.lv3::after {
+            content: ''; position: absolute; inset: -4px; border-radius: 50%;
+            box-shadow: 0 0 28px rgba(245,158,11,0.7), 0 0 56px rgba(245,158,11,0.3);
+            animation: sfw-pulse-glow 1.8s ease-in-out infinite;
+        }
+        /* Lv3 大翅膀 */
+        .sfw-body.lv3 .sfw-wing {
+            position: absolute; top: 10%; width: 28px; height: 42px;
+            background: linear-gradient(175deg,
+                rgba(255,255,255,0.9) 0%,
+                rgba(254,215,170,0.65) 35%,
+                rgba(251,146,60,0.4) 70%,
+                rgba(245,158,11,0.2) 100%);
+            border-radius: 50% 50% 18% 18%;
+            backdrop-filter: blur(3px);
+            box-shadow: 0 0 16px rgba(251,191,36,0.4), 0 0 32px rgba(245,158,11,0.2), inset 0 0 12px rgba(255,255,255,0.55);
+            animation: sfw-wing-flap-lv3 1.4s ease-in-out infinite;
+        }
+        .sfw-body.lv3 .sfw-wing.left { left: -18px; transform-origin: right center; }
+        .sfw-body.lv3 .sfw-wing.right { right: -18px; transform-origin: left center; scaleX(-1); animation-delay: -0.7s; }
+        @keyframes sfw-wing-flap-lv3 {
+            0%,100% { transform: rotate(16deg) scaleY(1); }
+            50% { transform: rotate(4deg) scaleY(0.78); }
+        }
+        /* Lv3 能量环 */
+        .sfw-body.lv3 .sfw-energy-ring {
+            position: absolute; inset: -14px; border-radius: 50%;
+            border: 1.5px dashed rgba(251,191,36,0.35);
+            animation: sfw-energy-spin 6s linear infinite reverse;
+        }
+        @keyframes sfw-energy-spin { to { transform: rotate(360deg); } }
+
+        /* ===== Lv4 精灵使 - 星辰圣光 ===== */
+        .sfw-body.lv4 {
+            width: 90px; height: 90px;
+            background:
+                radial-gradient(circle at 28% 24%, rgba(255,255,255,0.92) 0%, transparent 30%),
+                radial-gradient(circle at 72% 76%, rgba(255,255,255,0.42) 0%, transparent 24%),
+                conic-gradient(from 240deg, #f472b6, #ec4899, #db2777, #e879f9, #c084fc, #a78bfa, #818cf8, #6366f1, #ec4899);
+            box-shadow:
+                0 0 40px rgba(236,72,153,0.6),
+                0 0 80px rgba(236,72,153,0.3),
+                0 14px 46px rgba(219,39,119,0.35),
+                inset 0 -16px 30px rgba(0,0,0,0.14),
+                inset 0 16px 24px rgba(255,255,255,0.52);
+        }
+        .sfw-body.lv4::before {
+            content: ''; position: absolute; inset: -10px; border-radius: 50%;
+            border: 3px solid rgba(232,121,249,0.4);
+            animation: sfw-ring-rotate 6s linear infinite;
+            border-top-color: rgba(244,114,182,0.98); border-left-color: rgba(192,132,252,0.85);
+        }
+        .sfw-body.lv4::after {
+            content: ''; position: absolute; inset: -5px; border-radius: 50%;
+            box-shadow: 0 0 35px rgba(236,72,153,0.7), 0 0 70px rgba(236,72,153,0.3);
+            animation: sfw-pulse-glow 1.6s ease-in-out infinite;
+        }
+        /* Lv4 圣光光环 */
+        .sfw-body.lv4 .sfw-halo {
+            position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
+            width: 42px; height: 12px; border: 3px solid rgba(251,207,232,0.8);
+            border-radius: 50%;
+            box-shadow:
+                0 0 12px rgba(236,72,153,0.5),
+                0 0 24px rgba(192,132,252,0.3),
+                inset 0 0 6px rgba(255,255,255,0.6);
+            animation: sfw-halo-float 2.5s ease-in-out infinite;
+        }
+        @keyframes sfw-halo-float {
+            0%,100% { transform: translateX(-50%) translateY(0) scale(1); filter: brightness(1); }
+            50% { transform: translateX(-50%) translateY(-4px) scale(1.06); filter: brightness(1.2); }
+        }
+        /* Lv4 翅膀 */
+        .sfw-body.lv4 .sfw-wing {
+            position: absolute; top: 8%; width: 32px; height: 48px;
+            background: linear-gradient(172deg,
+                rgba(255,255,255,0.93) 0%,
+                rgba(251,207,232,0.7) 30%,
+                rgba(232,121,249,0.45) 60%,
+                rgba(192,132,252,0.2) 100%);
+            border-radius: 50% 50% 16% 16%;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 20px rgba(236,72,153,0.45), 0 0 40px rgba(192,132,252,0.25), inset 0 0 14px rgba(255,255,255,0.58);
+            animation: sfw-wing-flap-lv4 1.2s ease-in-out infinite;
+        }
+        .sfw-body.lv4 .sfw-wing.left { left: -20px; transform-origin: right center; }
+        .sfw-body.lv4 .sfw-wing.right { right: -20px; transform-origin: left center; scaleX(-1); animation-delay: -0.6s; }
+        @keyframes sfw-wing-flap-lv4 {
+            0%,100% { transform: rotate(14deg) scaleY(1); }
+            50% { transform: rotate(2deg) scaleY(0.74); }
+        }
+        /* Lv4 星尘 */
+        .sfw-body.lv4 .sfw-stardust {
+            position: absolute; inset: -20px; border-radius: 50%;
+            pointer-events: none;
+        }
+        .sfw-body.lv4 .sfw-stardust::before,
+        .sfw-body.lv4 .sfw-stardust::after {
+            content: '✦'; position: absolute; font-size: 10px;
+            color: rgba(251,207,232,0.9); text-shadow: 0 0 6px rgba(236,72,153,0.6);
+            animation: sfw-star-orbit 4s linear infinite;
+        }
+        .sfw-body.lv4 .sfw-stardust::before { top: 0; left: 50%; animation-duration: 4s; }
+        .sfw-body.lv4 .sfw-stardust::after { bottom: 0; left: 50%; animation-duration: 4s; animation-direction: reverse; }
+        @keyframes sfw-star-orbit {
+            from { transform: translateX(-50%) rotate(0deg) translateY(-30px) rotate(0deg); }
+            to { transform: translateX(-50%) rotate(360deg) translateY(-30px) rotate(-360deg); }
+        }
+
+        /* ===== Lv5 贤者 - 宇宙至尊 ===== */
+        .sfw-body.lv5 {
+            width: 98px; height: 98px;
+            background:
+                radial-gradient(circle at 26% 22%, rgba(255,255,255,0.94) 0%, transparent 28%),
+                radial-gradient(circle at 74% 78%, rgba(255,255,255,0.44) 0%, transparent 22%),
+                conic-gradient(from 260deg,
+                    #fef3c7, #fde68a, #fcd34d, #f59e0b, #d97706,
+                    #dc2626, #ea580c, #f59e0b, #fcd34d, #fde68a, #fef3c7);
+            box-shadow:
+                0 0 50px rgba(217,119,6,0.65),
+                0 0 100px rgba(217,119,6,0.35),
+                0 0 150px rgba(245,158,11,0.15),
+                0 16px 52px rgba(220,38,38,0.35),
+                inset 0 -18px 34px rgba(0,0,0,0.15),
+                inset 0 18px 26px rgba(255,255,255,0.55);
+            animation: sfw-sage-glow 2s ease-in-out infinite !important;
+        }
+        .sfw-body.lv5::before {
+            content: ''; position: absolute; inset: -12px; border-radius: 50%;
+            border: 3px solid rgba(253,213,138,0.45);
+            animation: sfw-ring-rotate 5s linear infinite;
+            border-top-color: rgba(253,196,104,0.98); border-bottom-color: rgba(220,38,38,0.8);
+        }
+        .sfw-body.lv5::after {
+            content: ''; position: absolute; inset: -6px; border-radius: 50%;
+            box-shadow: 0 0 45px rgba(217,119,6,0.75), 0 0 90px rgba(217,119,6,0.35);
+            animation: sfw-pulse-glow 1.4s ease-in-out infinite;
+        }
+        /* Lv5 王冠 */
+        .sfw-body.lv5 .sfw-crown {
+            position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+            z-index: 4;
+        }
+        .sfw-body.lv5 .sfw-crown::before {
+            content: '👑'; font-size: 20px;
+            display: block; text-align: center;
+            filter: drop-shadow(0 0 8px rgba(253,196,104,0.8)) drop-shadow(0 0 16px rgba(217,119,6,0.5));
+            animation: sfw-crown-shimmer 2s ease-in-out infinite;
+        }
+        @keyframes sfw-crown-shimmer {
+            0%,100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 8px rgba(253,196,104,0.8)); }
+            50% { transform: scale(1.1) rotate(3deg); filter: drop-shadow(0 0 16px rgba(253,196,104,1)) drop-shadow(0 0 28px rgba(217,119,6,0.7)); }
+        }
+        /* Lv5 翅膀 */
+        .sfw-body.lv5 .sfw-wing {
+            position: absolute; top: 6%; width: 36px; height: 54px;
+            background: linear-gradient(170deg,
+                rgba(255,255,255,0.95) 0%,
+                rgba(254,243,199,0.75) 25%,
+                rgba(253,213,138,0.5) 55%,
+                rgba(217,119,6,0.25) 85%,
+                rgba(220,38,38,0.15) 100%);
+            border-radius: 50% 50% 14% 14%;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 24px rgba(253,196,104,0.5), 0 0 48px rgba(217,119,6,0.3), inset 0 0 16px rgba(255,255,255,0.6);
+            animation: sfw-wing-flap-lv5 1s ease-in-out infinite;
+        }
+        .sfw-body.lv5 .sfw-wing.left { left: -24px; transform-origin: right center; }
+        .sfw-body.lv5 .sfw-wing.right { right: -24px; transform-origin: left center; scaleX(-1); animation-delay: -0.5s; }
+        @keyframes sfw-wing-flap-lv5 {
+            0%,100% { transform: rotate(12deg) scaleY(1); }
+            50% { transform: rotate(0deg) scaleY(0.7); }
+        }
+        /* Lv5 光环 */
+        .sfw-body.lv5 .sfw-halo {
+            position: absolute; top: -26px; left: 50%; transform: translateX(-50%);
+            width: 50px; height: 14px; border: 3px solid rgba(253,213,138,0.9);
+            border-radius: 50%;
+            box-shadow:
+                0 0 16px rgba(253,196,104,0.7),
+                0 0 32px rgba(217,119,6,0.4),
+                0 0 48px rgba(220,38,38,0.2),
+                inset 0 0 8px rgba(255,255,255,0.7);
+            animation: sfw-halo-float 2s ease-in-out infinite;
+        }
+        /* Lv5 宇宙星尘 */
+        .sfw-body.lv5 .sfw-universe {
+            position: absolute; inset: -28px; border-radius: 50%; pointer-events: none;
+        }
+        .sfw-body.lv5 .sfw-universe::before,
+        .sfw-body.lv5 .sfw-universe::after,
+        .sfw-body.lv5 .sfw-universe .star-a,
+        .sfw-body.lv5 .sfw-universe .star-b {
+            position: absolute; font-size: 8px;
+            color: rgba(253,213,138,0.95); text-shadow: 0 0 8px rgba(253,196,104,0.8);
+        }
+        .sfw-body.lv5 .sfw-universe::before { content: '★'; top: 2px; left: 50%; animation: sfw-orbit-a 5s linear infinite; }
+        .sfw-body.lv5 .sfw-universe::after { content: '✦'; bottom: 4px; left: 50%; animation: sfw-orbit-b 5s linear infinite reverse; }
+        @keyframes sfw-orbit-a {
+            from { transform: translateX(-50%) rotate(0deg) translateY(-38px) rotate(0deg); }
+            to { transform: translateX(-50%) rotate(360deg) translateY(-38px) rotate(-360deg); }
+        }
+        @keyframes sfw-orbit-b {
+            from { transform: translateX(-50%) rotate(0deg) translateY(-34px) rotate(0deg); }
+            to { transform: translateX(-50%) rotate(360deg) translateY(-34px) rotate(-360deg); }
+        }
+
+        /* ===== 等级标签 - 每级独特颜色 ===== */
+        .sfw-level-tag {
+            position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+            font-size: 10px; font-weight: 700; color: #fff; padding: 1px 8px;
+            border-radius: 8px; white-space: nowrap; z-index: 3;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 1px 4px rgba(102,126,234,0.3);
+            transition: all 0.4s ease;
+        }
+        .sfw-body.lv0 .sfw-level-tag { background: linear-gradient(135deg, #38bdf8, #0ea5e9); box-shadow: 0 1px 6px rgba(56,189,248,0.4); }
+        .sfw-body.lv1 .sfw-level-tag { background: linear-gradient(135deg, #4ade80, #16a34a); box-shadow: 0 1px 6px rgba(74,222,128,0.4); }
+        .sfw-body.lv2 .sfw-level-tag { background: linear-gradient(135deg, #a78bfa, #7c3aed); box-shadow: 0 1px 6px rgba(139,92,246,0.4); }
+        .sfw-body.lv3 .sfw-level-tag { background: linear-gradient(135deg, #fbbf24, #d97706); box-shadow: 0 1px 6px rgba(245,158,11,0.4); }
+        .sfw-body.lv4 .sfw-level-tag { background: linear-gradient(135deg, #f472b6, #db2777); box-shadow: 0 1px 6px rgba(236,72,153,0.4); }
+        .sfw-body.lv5 .sfw-level-tag { background: linear-gradient(135deg, #fcd34d, #dc2626); box-shadow: 0 1px 8px rgba(220,38,38,0.5); font-size: 11px; }
+
+        /* ===== 面部表情 ===== */
+        .sfw-face {
+            position: relative; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; z-index: 2;
+        }
+        .sfw-eyes {
+            display: flex; gap: 12px; margin-bottom: 6px; margin-top: -4px;
+        }
+        .sfw-eye {
+            width: 14px; height: 16px; background: #fff; border-radius: 50%;
+            position: relative; overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .sfw-pupil {
+            width: 8px; height: 9px; background: #2d2d2d; border-radius: 50%;
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s ease-out;
+        }
+        .sfw-pupil::after {
+            content: ''; position: absolute; top: 1px; right: 1px;
+            width: 3px; height: 3px; background: #fff; border-radius: 50%;
+        }
+        .sfw-mouth {
+            width: 12px; height: 6px; border-radius: 0 0 12px 12px;
+            border: 2px solid rgba(0,0,0,0.3); border-top: none;
+            transition: all 0.3s ease;
+        }
+        /* 情绪嘴巴变化 */
+        .sfw-body.emotion-HAPPY .sfw-mouth,
+        .sfw-body.emotion-EXCITED .sfw-mouth {
+            width: 16px; height: 8px; border-radius: 0 0 16px 16px;
+        }
+        .sfw-body.emotion-EXCITED .sfw-mouth {
+            width: 18px; height: 10px; background: rgba(255,100,100,0.3);
+        }
+        .sfw-body.emotion-HUNGRY .sfw-mouth {
+            width: 10px; height: 10px; border-radius: 50%;
+            border: 2px solid rgba(0,0,0,0.3);
+        }
+        .sfw-body.emotion-SLEEPING .sfw-mouth {
+            width: 8px; height: 0; border: none;
+            border-bottom: 2px solid rgba(0,0,0,0.2);
+            border-radius: 0;
+        }
+        .sfw-body.emotion-SLEEPING .sfw-eye {
+            height: 2px; border-radius: 1px;
+        }
+        .sfw-body.emotion-SLEEPING .sfw-pupil { display: none; }
+        /* 腮红 */
+        .sfw-blush {
+            position: absolute; width: 10px; height: 6px;
+            background: rgba(255,150,150,0.35); border-radius: 50%;
+            top: 55%; transition: opacity 0.3s ease;
+        }
+        .sfw-blush.left { left: 8px; }
+        .sfw-blush.right { right: 8px; }
+        .sfw-body.emotion-HAPPY .sfw-blush,
+        .sfw-body.emotion-EXCITED .sfw-blush { opacity: 1; background: rgba(255,120,120,0.5); }
+        .sfw-body.emotion-CALM .sfw-blush { opacity: 0.5; }
+        .sfw-body.emotion-HUNGRY .sfw-blush,
+        .sfw-body.emotion-SLEEPING .sfw-blush { opacity: 0; }
+
+        /* 眨眼动画 */
+        @keyframes sfw-blink {
+            0%,100% { transform: scaleY(1); }
+            50% { transform: scaleY(0.1); }
+        }
+        .sfw-eye.blink { animation: sfw-blink 0.15s ease-in-out; }
+
+        /* 情绪气泡 */
+        .sfw-emotion {
+            position: absolute; bottom: -2px; right: -2px;
+            font-size: 20px; background: #fff; border-radius: 50%;
+            width: 26px; height: 26px; display: flex; align-items: center;
+            justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            z-index: 3; transition: transform 0.3s ease;
+        }
+        #spirit-float-widget:hover .sfw-emotion { transform: scale(1.2); }
+
+        /* 装饰元素显隐 */
+        .sfw-deco { display: none; }
+        .sfw-body.lv1 .sfw-deco[data-min-level="1"],
+        .sfw-body.lv2 .sfw-deco[data-min-level="1"],
+        .sfw-body.lv2 .sfw-deco[data-min-level="2"],
+        .sfw-body.lv3 .sfw-deco[data-min-level="1"],
+        .sfw-body.lv3 .sfw-deco[data-min-level="2"],
+        .sfw-body.lv3 .sfw-deco[data-min-level="3"],
+        .sfw-body.lv4 .sfw-deco[data-min-level="1"],
+        .sfw-body.lv4 .sfw-deco[data-min-level="2"],
+        .sfw-body.lv4 .sfw-deco[data-min-level="3"],
+        .sfw-body.lv4 .sfw-deco[data-min-level="4"],
+        .sfw-body.lv5 .sfw-deco { display: block; }
+
+        /* 迷你经验条 */
+        .sfw-exp-bar {
+            position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%);
+            width: 56px; height: 4px; border-radius: 2px; background: rgba(0,0,0,0.08);
+            overflow: hidden; z-index: 3;
+        }
+        .sfw-exp-fill {
+            height: 100%; border-radius: 2px; transition: width 0.6s ease;
+            background: linear-gradient(90deg, #38bdf8, #22d3ee);
+        }
+        .sfw-body.lv1 .sfw-exp-fill { background: linear-gradient(90deg, #4ade80, #22c55e); }
+        .sfw-body.lv2 .sfw-exp-fill { background: linear-gradient(90deg, #a78bfa, #7c3aed); }
+        .sfw-body.lv3 .sfw-exp-fill { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+        .sfw-body.lv4 .sfw-exp-fill { background: linear-gradient(90deg, #f472b6, #db2777); }
+        .sfw-body.lv5 .sfw-exp-fill { background: linear-gradient(90deg, #fcd34d, #dc2626); }
+
+        /* 消息气泡（精灵说话） */
+        .sfw-speech {
+            position: absolute; right: 80px; top: 50%; transform: translateY(-50%);
+            background: linear-gradient(135deg, #f8f9ff 0%, #eef1ff 100%);
+            color: #333; font-size: 13px; padding: 10px 16px;
+            border-radius: 18px 18px 18px 4px; max-width: 220px; line-height: 1.6;
+            box-shadow: 0 4px 20px rgba(102,126,234,0.12); pointer-events: none;
+            border: 1px solid #d6e0ff;
+            opacity: 0; transition: opacity 0.4s ease, transform 0.4s ease;
+            transform: translateY(-50%) translateX(8px);
+        }
+        .sfw-speech.show {
+            opacity: 1; transform: translateY(-50%) translateX(0); pointer-events: auto;
+        }
+        .sfw-speech::after {
+            content: ''; position: absolute; right: -6px; top: 50%; transform: translateY(-50%);
+            border: 6px solid transparent; border-left-color: #eef1ff; border-right: none;
+        }
+
+        /* ===== 动画 ===== */
+        @keyframes sfw-idle {
+            0%,100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        @keyframes sfw-bounce {
+            0%,100% { transform: translateY(0); }
+            25% { transform: translateY(-20px); }
+            50% { transform: translateY(0); }
+            65% { transform: translateY(-8px); }
+            80% { transform: translateY(0); }
+        }
+        @keyframes sfw-glow {
+            0% { box-shadow: 0 0 0 0 rgba(255,215,0,0.6); }
+            50% { box-shadow: 0 0 30px 10px rgba(255,215,0,0.4); }
+            100% { box-shadow: 0 0 0 0 rgba(255,215,0,0); }
+        }
+        @keyframes sfw-shake {
+            0%,100% { transform: translateX(0); }
+            20% { transform: translateX(-5px); }
+            40% { transform: translateX(5px); }
+            60% { transform: translateX(-3px); }
+            80% { transform: translateX(3px); }
+        }
+        @keyframes sfw-sparkle-fly {
+            0% { opacity: 1; transform: translate(0, 0) scale(1); }
+            100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0); }
+        }
+        @keyframes sfw-float-in {
+            0% { opacity: 0; transform: translateY(20px) scale(0.8); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* 沉睡状态 */
+        #spirit-float-widget.sleeping .sfw-body { filter: grayscale(0.5); opacity: 0.6; animation: sfw-sleep 4s ease-in-out infinite; }
+        @keyframes sfw-sleep {
+            0%,100% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.03) translateY(-2px); }
+        }
+        #spirit-float-widget.sleeping .sfw-body::before { animation: none; border-color: rgba(200,200,200,0.2); }
+
+        /* 情绪全身动画 */
+        .sfw-body.emotion-EXCITED { animation: sfw-idle 1.5s ease-in-out infinite !important; }
+        .sfw-body.emotion-HAPPY { animation: sfw-happy-wobble 2s ease-in-out infinite !important; }
+        @keyframes sfw-happy-wobble {
+            0%,100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-4px) rotate(-3deg); }
+            75% { transform: translateY(-4px) rotate(3deg); }
+        }
+        .sfw-body.emotion-HUNGRY { animation: sfw-hungry-shiver 3s ease-in-out infinite !important; }
+        @keyframes sfw-hungry-shiver {
+            0%,100% { transform: translateY(0); }
+            10% { transform: translateY(0) translateX(-1px); }
+            20% { transform: translateY(0) translateX(1px); }
+            30% { transform: translateY(0) translateX(0); }
+        }
+
+        /* 生气抖动 */
+        @keyframes sfw-angry-shake {
+            0%,100% { transform: translateX(0) rotate(0deg); }
+            20% { transform: translateX(-6px) rotate(-5deg); }
+            40% { transform: translateX(6px) rotate(5deg); }
+            60% { transform: translateX(-4px) rotate(-3deg); }
+            80% { transform: translateX(4px) rotate(3deg); }
+        }
+        .sfw-body.emotion-ANGRY .sfw-mouth {
+            width: 14px; height: 4px; border-radius: 14px 14px 0 0;
+            border: 2px solid rgba(0,0,0,0.4); border-bottom: none;
+            background: none;
+        }
+        .sfw-body.emotion-ANGRY .sfw-eye { transform: rotate(-10deg); }
+        .sfw-body.emotion-ANGRY .sfw-eye:last-child { transform: rotate(10deg); }
+        .sfw-body.emotion-ANGRY .sfw-blush { opacity: 0; }
+        .sfw-body.emotion-ANGRY::after {
+            content: '💢'; position: absolute; top: -8px; right: -8px;
+            font-size: 14px; animation: sfw-pop 0.3s ease-out;
+        }
+
+        /* ===== 迷你聊天面板 ===== */
+        .sfw-panel {
+            position: absolute; right: 80px; bottom: 0;
+            width: 300px; background: #fff; border-radius: 16px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.15); overflow: hidden;
+            opacity: 0; transform: scale(0.9) translateX(12px);
+            pointer-events: none; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-origin: bottom right;
+        }
+        .sfw-panel.open {
+            opacity: 1; transform: scale(1) translateX(0); pointer-events: auto;
+        }
+        .sfw-panel-header {
+            background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+            padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .sfw-panel-header .name { font-weight: 600; font-size: 14px; }
+        .sfw-panel-header .lv { font-size: 11px; opacity: 0.8; }
+        .sfw-panel-close {
+            background: rgba(255,255,255,0.2); border: none; color: #fff;
+            width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+            font-size: 14px; display: flex; align-items: center; justify-content: center;
+        }
+        .sfw-panel-close:hover { background: rgba(255,255,255,0.3); }
+        .sfw-panel-stats {
+            display: flex; gap: 0; background: #f8f9ff; padding: 8px 0; border-bottom: 1px solid #f0f0f5;
+        }
+        .sfw-panel-stat {
+            flex: 1; text-align: center; border-right: 1px solid #eee;
+        }
+        .sfw-panel-stat:last-child { border-right: none; }
+        .sfw-panel-stat .val { font-size: 16px; font-weight: 700; color: #667eea; }
+        .sfw-panel-stat .label { font-size: 10px; color: #999; margin-top: 1px; }
+        .sfw-panel-messages {
+            height: 200px; overflow-y: auto; padding: 12px; display: flex;
+            flex-direction: column; gap: 8px; background: #f5f6ff;
+        }
+        .sfw-msg {
+            max-width: 85%; padding: 10px 14px; border-radius: 16px; font-size: 13px;
+            line-height: 1.6; word-break: break-all; position: relative;
+            animation: sfw-float-in 0.3s ease-out;
+        }
+        .sfw-msg.spirit {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8edff 100%);
+            color: #333; align-self: flex-start;
+            border-radius: 18px 18px 18px 4px;
+            border: 1px solid #d6e0ff;
+        }
+        .sfw-msg.user {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff; align-self: flex-end;
+            border-radius: 18px 18px 4px 18px;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+        }
+        .sfw-panel-input {
+            display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid #f0f0f5; background: #fff;
+        }
+        .sfw-panel-input input {
+            flex: 1; border: 1px solid #e0e4f0; border-radius: 22px; padding: 8px 16px;
+            font-size: 13px; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+            background: #f8f9ff;
+        }
+        .sfw-panel-input input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+        .sfw-panel-input button {
+            background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+            border: none; border-radius: 22px; padding: 8px 18px; font-size: 13px;
+            cursor: pointer; font-weight: 500; transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+        }
+        .sfw-panel-input button:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,0.4); }
+        .sfw-panel-actions {
+            display: flex; gap: 0; border-top: 1px solid #f0f0f5;
+        }
+        .sfw-panel-action {
+            flex: 1; padding: 8px; text-align: center; font-size: 12px;
+            color: #667eea; cursor: pointer; border-right: 1px solid #f0f0f5;
+            transition: background 0.2s; font-weight: 500;
+        }
+        .sfw-panel-action:last-child { border-right: none; }
+        .sfw-panel-action:hover { background: #f0f4ff; }
+        .sfw-panel-action .icon { font-size: 16px; display: block; margin-bottom: 2px; }
+
+        /* ===== 性格切换面板 ===== */
+        .sfw-personality-btn {
+            position: absolute; top: 12px; right: 36px;
+            background: rgba(255,255,255,0.2); border: none; color: #fff;
+            width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+            font-size: 13px; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .sfw-personality-btn:hover { background: rgba(255,255,255,0.35); }
+        .sfw-personality-panel {
+            position: absolute; right: 80px; top: 0;
+            width: 280px; background: #fff; border-radius: 16px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.15); overflow: hidden;
+            opacity: 0; transform: scale(0.9) translateX(12px);
+            pointer-events: none; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-origin: top right; z-index: 10;
+        }
+        .sfw-personality-panel.open {
+            opacity: 1; transform: scale(1) translateX(0); pointer-events: auto;
+        }
+        .sfw-personality-header {
+            background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+            padding: 12px 16px; font-weight: 600; font-size: 14px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .sfw-personality-close {
+            background: rgba(255,255,255,0.2); border: none; color: #fff;
+            width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+            font-size: 13px; display: flex; align-items: center; justify-content: center;
+        }
+        .sfw-personality-list {
+            padding: 8px; max-height: 260px; overflow-y: auto;
+        }
+        .sfw-personality-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; border-radius: 12px; cursor: pointer;
+            transition: background 0.2s; border: 2px solid transparent;
+        }
+        .sfw-personality-item:hover { background: #f0f4ff; }
+        .sfw-personality-item.active { background: #f0f4ff; border-color: #667eea; }
+        .sfw-personality-item .p-icon { font-size: 24px; }
+        .sfw-personality-item .p-info { flex: 1; }
+        .sfw-personality-item .p-name { font-weight: 600; font-size: 14px; color: #333; }
+        .sfw-personality-item .p-desc { font-size: 11px; color: #999; margin-top: 2px; }
+        .sfw-personality-item .p-check { color: #667eea; font-size: 16px; display: none; }
+        .sfw-personality-item.active .p-check { display: block; }
+
+        /* ===== 反应Toast ===== */
+        .sfw-reaction-toast {
+            position: fixed; z-index: 99995; pointer-events: none;
+            background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+            padding: 10px 18px; border-radius: 20px; font-size: 13px; font-weight: 500;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.4);
+            animation: sfw-toast-in 0.35s ease-out, sfw-toast-out 0.4s 2.8s ease-in forwards;
+            white-space: nowrap; max-width: 280px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        @keyframes sfw-toast-in { 0% { opacity: 0; transform: translateY(8px) scale(0.9); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes sfw-toast-out { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-12px); } }
+
+        /* 粒子 */
+        .sfw-sparkle {
+            position: fixed; z-index: 99994; pointer-events: none;
+            font-size: 16px; animation: sfw-sparkle-fly 0.9s ease-out forwards;
+        }
+
+        /* 环境粒子（持续飘动的小光点） */
+        .sfw-ambient {
+            position: fixed; z-index: 99989; pointer-events: none;
+            width: 4px; height: 4px; border-radius: 50%;
+            background: rgba(102,126,234,0.4);
+            animation: sfw-ambient-float var(--dur) ease-in-out infinite;
+            animation-delay: var(--delay);
+        }
+        @keyframes sfw-ambient-float {
+            0%,100% { transform: translate(0, 0); opacity: 0.3; }
+            25% { transform: translate(var(--dx1), var(--dy1)); opacity: 0.6; }
+            50% { transform: translate(var(--dx2), var(--dy2)); opacity: 0.2; }
+            75% { transform: translate(var(--dx3), var(--dy3)); opacity: 0.5; }
+        }
+
+        /* 上下文标签 */
+        .sfw-context-label {
+            position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
+            font-size: 10px; color: #667eea; background: rgba(255,255,255,0.94);
+            padding: 2px 8px; border-radius: 8px; white-space: nowrap;
+            opacity: 0; transition: opacity 0.4s ease; pointer-events: none;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        #spirit-float-widget.has-context .sfw-context-label { opacity: 1; }
+
+        /* 入场动画 */
+        #spirit-float-widget { animation: sfw-float-in 0.6s ease-out; }
+
+        /* 响应式 */
+        @media (max-width: 640px) {
+            .sfw-panel { width: 260px; right: 60px; }
+            .sfw-speech { max-width: 160px; font-size: 12px; }
+        }
+    </style>
+
+    <div id="spirit-float-widget" style="right:24px;bottom:80px;">
+        <div class="sfw-context-label" id="sfw-context-label"></div>
+        <!-- 消息气泡 -->
+        <div class="sfw-speech" id="sfw-speech"></div>
+        <!-- 精灵角色 -->
+        <div class="sfw-body lv0" id="sfw-body" title="点击和我聊天！拖动移动位置">
+            <span class="sfw-level-tag" id="sfw-level-tag">Lv.0</span>
+            <!-- 等级装饰 -->
+            <div class="sfw-leaf-left sfw-deco" data-min-level="1"></div>
+            <div class="sfw-leaf-right sfw-deco" data-min-level="1"></div>
+            <div class="sfw-wing left sfw-deco" data-min-level="2"></div>
+            <div class="sfw-wing right sfw-deco" data-min-level="2"></div>
+            <div class="sfw-energy-ring sfw-deco" data-min-level="3"></div>
+            <div class="sfw-halo sfw-deco" data-min-level="4"></div>
+            <div class="sfw-stardust sfw-deco" data-min-level="4"></div>
+            <div class="sfw-crown sfw-deco" data-min-level="5"></div>
+            <div class="sfw-universe sfw-deco" data-min-level="5"></div>
+            <!-- 面部 -->
+            <div class="sfw-face" id="sfw-face">
+                <div class="sfw-eyes">
+                    <div class="sfw-eye"><div class="sfw-pupil" id="sfw-pupil-l"></div></div>
+                    <div class="sfw-eye"><div class="sfw-pupil" id="sfw-pupil-r"></div></div>
+                </div>
+                <div class="sfw-mouth" id="sfw-mouth"></div>
+                <div class="sfw-blush left"></div>
+                <div class="sfw-blush right"></div>
+            </div>
+            <span class="sfw-emotion" id="sfw-emotion">🙂</span>
+        </div>
+        <!-- 迷你经验条 -->
+        <div class="sfw-exp-bar"><div class="sfw-exp-fill" id="sfw-exp-fill" style="width:0%"></div></div>
+        <!-- 迷你聊天面板 -->
+        <div class="sfw-panel" id="sfw-panel">
+            <div class="sfw-panel-header">
+                <div><span class="name" id="sfw-panel-name">小光</span> <span class="lv" id="sfw-panel-lv">Lv.0 种子</span></div>
+                <button class="sfw-personality-btn" id="sfw-personality-btn" title="切换性格">🎭</button>
+                <button class="sfw-panel-close" id="sfw-panel-close">&times;</button>
+            </div>
+            <div class="sfw-panel-stats">
+                <div class="sfw-panel-stat"><div class="val" id="sfw-panel-exp">0</div><div class="label">经验</div></div>
+                <div class="sfw-panel-stat"><div class="val" id="sfw-panel-sat">100</div><div class="label">饱食</div></div>
+                <div class="sfw-panel-stat"><div class="val" id="sfw-panel-streak">0</div><div class="label">连续</div></div>
+            </div>
+            <div class="sfw-panel-messages" id="sfw-panel-messages">
+                <div class="sfw-msg spirit">嗨！我是你的学习精灵，点击下方和我聊天吧~</div>
+            </div>
+            <div class="sfw-panel-input">
+                <input type="text" id="sfw-chat-input" placeholder="和小光说点什么..." onkeydown="if(event.key==='Enter'){window._sfwSendChat&&window._sfwSendChat();}">
+                <button onclick="window._sfwSendChat&&window._sfwSendChat()">发送</button>
+            </div>
+            <div class="sfw-panel-actions">
+                <div class="sfw-panel-action" onclick="window._sfwFeed&&window._sfwFeed()"><span class="icon">🍖</span>喂食</div>
+                <div class="sfw-panel-action" onclick="window._sfwGreet&&window._sfwGreet()"><span class="icon">💬</span>问候</div>
+                <div class="sfw-panel-action" onclick="window.location.href='/companion'"><span class="icon">🏠</span>详情</div>
+            </div>
+        </div>
+        <!-- 性格切换面板 -->
+        <div class="sfw-personality-panel" id="sfw-personality-panel">
+            <div class="sfw-personality-header">
+                <span>切换精灵性格</span>
+                <button class="sfw-personality-close" id="sfw-personality-close">&times;</button>
+            </div>
+            <div class="sfw-personality-list" id="sfw-personality-list">
+                <!-- 动态填充 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        var API = 'http://localhost:8087/api/companion';
+        var widget = document.getElementById('spirit-float-widget');
+        var body = document.getElementById('sfw-body');
+        var emotionEl = document.getElementById('sfw-emotion');
+        var levelTag = document.getElementById('sfw-level-tag');
+        var expFill = document.getElementById('sfw-exp-fill');
+        var speech = document.getElementById('sfw-speech');
+        var contextLabel = document.getElementById('sfw-context-label');
+        var panel = document.getElementById('sfw-panel');
+        var panelClose = document.getElementById('sfw-panel-close');
+        var panelMessages = document.getElementById('sfw-panel-messages');
+        var chatInput = document.getElementById('sfw-chat-input');
+        var panelName = document.getElementById('sfw-panel-name');
+        var panelLv = document.getElementById('sfw-panel-lv');
+        var panelExp = document.getElementById('sfw-panel-exp');
+        var panelSat = document.getElementById('sfw-panel-sat');
+        var panelStreak = document.getElementById('sfw-panel-streak');
+        var pupilL = document.getElementById('sfw-pupil-l');
+        var pupilR = document.getElementById('sfw-pupil-r');
+        var userId = 1;
+        var panelOpen = false;
+        var chatSessionId = null;
+        var reactionTimer = null;
+        var pendingToast = null;
+        var spiritData = null;
+        var speechTimer = null;
+        var personalityPanel = document.getElementById('sfw-personality-panel');
+        var personalityBtn = document.getElementById('sfw-personality-btn');
+        var personalityClose = document.getElementById('sfw-personality-close');
+        var personalityList = document.getElementById('sfw-personality-list');
+        var personalityOpen = false;
+        var currentPersonalityKey = 'warm';
+        var proactiveChatTimer = null;
+
+        // Get user
+        try {
+            var user = (window.JellyStudyApp && JellyStudyApp.getUser) ? JellyStudyApp.getUser() : null;
+            if (user && user.id) userId = user.id;
+        } catch(e) {}
+
+        // ===== Drag logic =====
+        var dragging = false, moved = false;
+        var startX, startY, startLeft, startTop;
+
+        function setPos(x, y) {
+            widget.style.left = Math.max(0, Math.min(window.innerWidth - 90, x)) + 'px';
+            widget.style.top = Math.max(0, Math.min(window.innerHeight - 90, y)) + 'px';
+            widget.style.right = 'auto'; widget.style.bottom = 'auto';
+        }
+
+        body.addEventListener('mousedown', function(e) {
+            if (e.button !== 0) return;
+            dragging = true; moved = false;
+            widget.classList.add('dragging');
+            var rect = widget.getBoundingClientRect();
+            startX = e.clientX; startY = e.clientY;
+            startLeft = rect.left; startTop = rect.top;
+            e.preventDefault();
+        });
+        body.addEventListener('touchstart', function(e) {
+            dragging = true; moved = false;
+            widget.classList.add('dragging');
+            var rect = widget.getBoundingClientRect();
+            startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+            startLeft = rect.left; startTop = rect.top;
+        }, {passive: false});
+
+        document.addEventListener('mousemove', function(e) {
+            if (!dragging) return;
+            var dx = e.clientX - startX, dy = e.clientY - startY;
+            if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+            setPos(startLeft + dx, startTop + dy);
+        });
+        document.addEventListener('touchmove', function(e) {
+            if (!dragging) return;
+            var dx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
+            if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+            setPos(startLeft + dx, startTop + dy);
+        }, {passive: false});
+
+        document.addEventListener('mouseup', function() {
+            if (!dragging) return;
+            dragging = false; widget.classList.remove('dragging');
+            if (!moved) { togglePanel(); velocityX = 0; velocityY = 0; return; }
+            if (Math.abs(velocityX) > 1 || Math.abs(velocityY) > 1) springRelease();
+        });
+        document.addEventListener('touchend', function() {
+            if (!dragging) return;
+            dragging = false; widget.classList.remove('dragging');
+            if (!moved) { togglePanel(); velocityX = 0; velocityY = 0; return; }
+            if (Math.abs(velocityX) > 1 || Math.abs(velocityY) > 1) springRelease();
+        });
+
+        // ===== Panel toggle =====
+        function togglePanel() {
+            panelOpen = !panelOpen;
+            if (panelOpen) {
+                panel.classList.add('open');
+                chatInput.focus();
+                scrollMessages();
+            } else {
+                panel.classList.remove('open');
+            }
+        }
+        panelClose.addEventListener('click', function(e) {
+            e.stopPropagation();
+            panelOpen = false;
+            panel.classList.remove('open');
+        });
+
+        // ===== Load spirit state =====
+        var emotionMap = { EXCITED:'🤩', HAPPY:'😊', CALM:'🙂', HUNGRY:'😟', SLEEPING:'😴' };
+        var emotionSpeech = {
+            EXCITED: '太棒了！我感觉自己变强了！',
+            HAPPY: '今天学到了新东西，好开心~',
+            CALM: '嗯...继续加油哦！',
+            HUNGRY: '我有点饿了...你今天会来陪我吗？',
+            SLEEPING: 'zzZ...'
+        };
+
+        function loadState() {
+            axios.get(API + '/spirit/state', { params: {userId: userId} }).then(function(res) {
+                if (res.data.code !== 200 || !res.data.data) return;
+                var s = res.data.data;
+                spiritData = s;
+                var level = s.level || 0;
+                var displayLevel = s.appearanceLevel != null ? s.appearanceLevel : level;
+                var emotion = s.emotion || 'CALM';
+
+                // 更新精灵等级+情绪样式（使用appearanceLevel显示外形）
+                body.className = 'sfw-body lv' + Math.min(displayLevel, 5) + ' emotion-' + emotion;
+                emotionEl.textContent = emotionMap[emotion] || '🙂';
+                levelTag.textContent = 'Lv.' + level;
+
+                // 更新等级装饰可见性（使用appearanceLevel）
+                var decos = body.querySelectorAll('.sfw-deco');
+                for (var i = 0; i < decos.length; i++) {
+                    var minLv = parseInt(decos[i].getAttribute('data-min-level')) || 0;
+                    decos[i].style.display = displayLevel >= minLv ? '' : 'none';
+                }
+
+                // 经验条
+                var expPct = s.nextLevelExp > 0 ? Math.min(100, Math.round(s.experience / s.nextLevelExp * 100)) : 0;
+                expFill.style.width = expPct + '%';
+
+                // 沉睡状态
+                if (s.emotion === 'SLEEPING') widget.classList.add('sleeping');
+                else widget.classList.remove('sleeping');
+
+                // 面板信息
+                panelName.textContent = s.name || '小光';
+                panelLv.textContent = 'Lv.' + level + ' ' + (s.levelName || '');
+                panelExp.textContent = s.experience || 0;
+                panelSat.textContent = s.satiation || 0;
+
+                // 性格
+                if (s.personalityKey) currentPersonalityKey = s.personalityKey;
+
+                // 加载仪表盘数据
+                loadDashboard();
+                // 加载性格列表
+                loadPersonalities();
+            }).catch(function() {});
+        }
+
+        function loadDashboard() {
+            axios.get(API + '/spirit/dashboard', { params: {userId: userId} }).then(function(res) {
+                if (res.data.code !== 200 || !res.data.data) return;
+                var d = res.data.data;
+                panelStreak.textContent = d.streakDays || 0;
+            }).catch(function() {});
+        }
+
+        // ===== 性格系统 =====
+        var personalitiesLoaded = false;
+        var personalitiesData = [];
+
+        // 硬编码fallback，确保后端不可用时也能显示
+        var fallbackPersonalities = [
+            { key: 'warm', name: '小光', icon: '⭐', desc: '温暖好奇的小伙伴' },
+            { key: 'tsundere', name: '小傲', icon: '😏', desc: '傲娇毒舌的学霸' },
+            { key: 'scholar', name: '小博', icon: '🎓', desc: '严谨博学的智者' },
+            { key: 'lively', name: '小蜂', icon: '🍯', desc: '活泼调皮的小蜂鸟' },
+            { key: 'cool', name: '小酷', icon: '😎', desc: '酷酷的极简派' }
+        ];
+
+        function loadPersonalities() {
+            if (personalitiesLoaded) return;
+            axios.get(API + '/spirit/personalities').then(function(res) {
+                if (res.data.code === 200 && res.data.data && res.data.data.length > 0) {
+                    personalitiesData = res.data.data;
+                } else {
+                    personalitiesData = fallbackPersonalities;
+                }
+                personalitiesLoaded = true;
+                renderPersonalities();
+            }).catch(function() {
+                // 后端不可用，使用fallback
+                personalitiesData = fallbackPersonalities;
+                personalitiesLoaded = true;
+                renderPersonalities();
+            });
+        }
+
+        function renderPersonalities() {
+            personalityList.innerHTML = '';
+            for (var i = 0; i < personalitiesData.length; i++) {
+                var p = personalitiesData[i];
+                var item = document.createElement('div');
+                item.className = 'sfw-personality-item' + (p.key === currentPersonalityKey ? ' active' : '');
+                item.setAttribute('data-key', p.key);
+                item.innerHTML = '<span class="p-icon">' + (p.icon || '🌟') + '</span>' +
+                    '<div class="p-info"><div class="p-name">' + escapeHtmlSfw(p.name) + '</div>' +
+                    '<div class="p-desc">' + escapeHtmlSfw(p.desc) + '</div></div>' +
+                    '<span class="p-check">✓</span>';
+                item.addEventListener('click', (function(key, name) {
+                    return function() { switchPersonality(key, name); };
+                })(p.key, p.name));
+                personalityList.appendChild(item);
+            }
+        }
+
+        function switchPersonality(key, name) {
+            // 先更新UI
+            currentPersonalityKey = key;
+            panelName.textContent = name;
+            chatInput.placeholder = '和' + name + '说点什么...';
+            var items = personalityList.querySelectorAll('.sfw-personality-item');
+            for (var i = 0; i < items.length; i++) {
+                items[i].classList.toggle('active', items[i].getAttribute('data-key') === key);
+            }
+            bounceWidget();
+            sparkle(5, ['🎭','✨','💫','🌟','⭐']);
+            showSpeech('我变成' + name + '了！感觉不太一样呢~', 4000);
+            addMessage('性格切换为：' + name, 'spirit');
+            personalityOpen = false;
+            personalityPanel.classList.remove('open');
+
+            // 尝试同步到后端
+            axios.post(API + '/spirit/personality', null, {
+                params: { userId: userId, personalityKey: key }
+            }).then(function(res) {
+                if (res.data.code === 200 && res.data.data) {
+                    var s = res.data.data;
+                    panelName.textContent = s.name || name;
+                    loadState();
+                }
+            }).catch(function() {
+                // 后端不可用，仅本地切换也OK
+                console.log('性格切换仅本地生效，后端未连接');
+            });
+        }
+
+        // 性格面板开关
+        personalityBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            personalityOpen = !personalityOpen;
+            if (personalityOpen) {
+                // 确保性格列表已加载
+                if (!personalitiesLoaded) loadPersonalities();
+                personalityPanel.classList.add('open');
+            } else {
+                personalityPanel.classList.remove('open');
+            }
+        });
+        personalityClose.addEventListener('click', function(e) {
+            e.stopPropagation();
+            personalityOpen = false;
+            personalityPanel.classList.remove('open');
+        });
+
+        // ===== 主动聊天定时器 =====
+        function scheduleProactiveChat() {
+            // 随机3~8分钟主动聊天一次
+            var delay = (3 + Math.random() * 5) * 60 * 1000;
+            proactiveChatTimer = setTimeout(function() {
+                // 面板打开时不打扰
+                if (panelOpen) {
+                    scheduleProactiveChat();
+                    return;
+                }
+                axios.get(API + '/spirit/proactive-chat', { params: { userId: userId, personalityKey: currentPersonalityKey } }).then(function(res) {
+                    if (res.data.code === 200 && res.data.data) {
+                        var d = res.data.data;
+                        showSpeech(d.spiritMessage || '嘿，在吗？', 6000);
+                        bounceWidget();
+                        sparkle(3, ['💬','💭','✨']);
+                    }
+                }).catch(function() {
+                    // AI不可用时用本地性格化话题
+                    var personalityTopics = {
+                        warm: [
+                            '嘿，你还在吗？我有点无聊~',
+                            '要不要一起复习一下？',
+                            '今天学了什么新东西呀？',
+                            '休息一下也好，别太累了~',
+                            '你知道吗？坚持学习的人最酷了！'
+                        ],
+                        tsundere: [
+                            '哼，才不是担心你呢...你今天学了没？',
+                            '别偷懒了！...我是说，随便你啦。',
+                            '你要是不学，我可不管你哦！...好吧，管一点点。',
+                            '你居然还在？算你有毅力。',
+                            '哼，这次考得还行吧...别得意！'
+                        ],
+                        scholar: [
+                            '学而不思则罔，思而不学则殆。',
+                            '温故而知新，可以为师矣。',
+                            '今日可曾读书？开卷有益啊。',
+                            '知之为知之，不知为不知，是知也。',
+                            '博学之，审问之，慎思之，明辨之。'
+                        ],
+                        lively: [
+                            '哇！你还在呀！一起学习吧！！',
+                            '嘿嘿嘿~今天有什么好玩的吗？',
+                            '冲冲冲！我最喜欢学习了！！！',
+                            '你超棒的！继续加油鸭~',
+                            '快快快！来做个题吧！超有趣的！'
+                        ],
+                        cool: [
+                            '嗯。',
+                            '稳。',
+                            '...学了？',
+                            '不错。',
+                            '继续。'
+                        ]
+                    };
+                    var topics = personalityTopics[currentPersonalityKey] || personalityTopics.warm;
+                    showSpeech(topics[Math.floor(Math.random() * topics.length)], 5000);
+                });
+                scheduleProactiveChat();
+            }, delay);
+        }
+        // 首次主动聊天在2分钟后
+        proactiveChatTimer = setTimeout(scheduleProactiveChat, 120000);
+
+        loadState();
+        setInterval(loadState, 60000);
+
+        // ===== 眨眼 =====
+        var eyeL = body.querySelector('.sfw-eye:first-child');
+        var eyeR = body.querySelector('.sfw-eye:last-child');
+        function blink() {
+            if (body.classList.contains('emotion-SLEEPING')) return;
+            eyeL.classList.add('blink');
+            eyeR.classList.add('blink');
+            setTimeout(function() {
+                eyeL.classList.remove('blink');
+                eyeR.classList.remove('blink');
+            }, 160);
+        }
+        // 随机间隔眨眼
+        function scheduleBlink() {
+            var delay = 2000 + Math.random() * 4000;
+            setTimeout(function() { blink(); scheduleBlink(); }, delay);
+        }
+        scheduleBlink();
+
+        // ===== 眼睛追踪鼠标 =====
+        var mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
+        document.addEventListener('mousemove', function(e) {
+            mouseX = e.clientX; mouseY = e.clientY;
+        });
+        function updatePupils() {
+            if (body.classList.contains('emotion-SLEEPING')) {
+                requestAnimationFrame(updatePupils); return;
+            }
+            var rect = body.getBoundingClientRect();
+            var cx = rect.left + rect.width / 2;
+            var cy = rect.top + rect.height / 2;
+            var dx = mouseX - cx, dy = mouseY - cy;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            var maxMove = 3; // 瞳孔最大偏移px
+            var ratio = Math.min(dist / 150, 1);
+            var px = (dx / (dist || 1)) * maxMove * ratio;
+            var py = (dy / (dist || 1)) * maxMove * ratio;
+            var transform = 'translate(calc(-50% + ' + px.toFixed(1) + 'px), calc(-50% + ' + py.toFixed(1) + 'px))';
+            pupilL.style.transform = transform;
+            pupilR.style.transform = transform;
+            requestAnimationFrame(updatePupils);
+        }
+        updatePupils();
+
+        // ===== 自动溜达 =====
+        var wandering = false;
+        var wanderTimer = null;
+        function startWander() {
+            if (dragging || panelOpen || body.classList.contains('emotion-SLEEPING')) {
+                wanderTimer = setTimeout(startWander, 5000); return;
+            }
+            wandering = true;
+            var rect = widget.getBoundingClientRect();
+            var curX = rect.left, curY = rect.top;
+            // 随机目标：在屏幕边缘安全区域
+            var margin = 20;
+            var targetX = margin + Math.random() * (window.innerWidth - 90 - margin * 2);
+            var targetY = margin + Math.random() * (window.innerHeight - 90 - margin * 2);
+            var duration = 3000 + Math.random() * 4000;
+            var startTime = performance.now();
+
+            function step(now) {
+                if (dragging || panelOpen) { wandering = false; wanderTimer = setTimeout(startWander, 8000); return; }
+                var elapsed = now - startTime;
+                var t = Math.min(elapsed / duration, 1);
+                // ease-in-out
+                var ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+                var nx = curX + (targetX - curX) * ease;
+                var ny = curY + (targetY - curY) * ease;
+                setPos(nx, ny);
+                if (t < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    wandering = false;
+                    wanderTimer = setTimeout(startWander, 8000 + Math.random() * 15000);
+                }
+            }
+            requestAnimationFrame(step);
+        }
+        wanderTimer = setTimeout(startWander, 10000);
+
+        // ===== 环境粒子 =====
+        function createAmbientParticles() {
+            var container = document.createElement('div');
+            container.id = 'sfw-ambient-container';
+            document.body.appendChild(container);
+            for (var i = 0; i < 6; i++) {
+                var p = document.createElement('div');
+                p.className = 'sfw-ambient';
+                p.style.left = (10 + Math.random() * 80) + 'vw';
+                p.style.top = (10 + Math.random() * 80) + 'vh';
+                p.style.setProperty('--dur', (6 + Math.random() * 8) + 's');
+                p.style.setProperty('--delay', (-Math.random() * 8) + 's');
+                p.style.setProperty('--dx1', (Math.random() * 30 - 15) + 'px');
+                p.style.setProperty('--dy1', -(Math.random() * 20 + 5) + 'px');
+                p.style.setProperty('--dx2', (Math.random() * 40 - 20) + 'px');
+                p.style.setProperty('--dy2', -(Math.random() * 30 + 10) + 'px');
+                p.style.setProperty('--dx3', (Math.random() * 20 - 10) + 'px');
+                p.style.setProperty('--dy3', -(Math.random() * 15 + 5) + 'px');
+                p.style.width = (3 + Math.random() * 3) + 'px';
+                p.style.height = p.style.width;
+                container.appendChild(p);
+            }
+        }
+        createAmbientParticles();
+
+        // ===== 弹性物理（拖拽释放后弹跳） =====
+        var velocityX = 0, velocityY = 0;
+        var lastDragX = 0, lastDragY = 0, lastDragTime = 0;
+
+        // 覆盖mousemove记录速度
+        document.addEventListener('mousemove', function(e) {
+            if (!dragging) return;
+            var now = performance.now();
+            var dt = now - lastDragTime;
+            if (dt > 0) {
+                velocityX = (e.clientX - lastDragX) / dt * 16; // px per frame
+                velocityY = (e.clientY - lastDragY) / dt * 16;
+            }
+            lastDragX = e.clientX; lastDragY = e.clientY; lastDragTime = now;
+        });
+
+        // 释放后弹性动画
+        var springActive = false;
+        function springRelease() {
+            if (Math.abs(velocityX) < 0.5 && Math.abs(velocityY) < 0.5) { springActive = false; return; }
+            springActive = true;
+            var rect = widget.getBoundingClientRect();
+            var x = rect.left + velocityX;
+            var y = rect.top + velocityY;
+            // 边界弹回
+            if (x < 0 || x > window.innerWidth - 90) velocityX *= -0.4;
+            if (y < 0 || y > window.innerHeight - 90) velocityY *= -0.4;
+            x = Math.max(0, Math.min(window.innerWidth - 90, x));
+            y = Math.max(0, Math.min(window.innerHeight - 90, y));
+            setPos(x, y);
+            velocityX *= 0.85; velocityY *= 0.85;
+            requestAnimationFrame(springRelease);
+        }
+
+        // ===== 精灵说话 =====
+        function showSpeech(text, duration) {
+            if (speechTimer) clearTimeout(speechTimer);
+            speech.textContent = text;
+            speech.classList.add('show');
+            speechTimer = setTimeout(function() {
+                speech.classList.remove('show');
+            }, duration || 4000);
+        }
+
+        // 首次加载时精灵不主动弹气泡，只在用户交互时显示
+
+        // 定时随机说话已关闭，避免页面杂乱
+
+        // ===== 聊天功能 =====
+        function scrollMessages() {
+            setTimeout(function() { panelMessages.scrollTop = panelMessages.scrollHeight; }, 50);
+        }
+
+        function addMessage(text, type) {
+            var div = document.createElement('div');
+            div.className = 'sfw-msg ' + type;
+            div.textContent = text;
+            panelMessages.appendChild(div);
+            scrollMessages();
+        }
+
+        window._sfwSendChat = function() {
+            var msg = chatInput.value.trim();
+            if (!msg) return;
+            chatInput.value = '';
+            addMessage(msg, 'user');
+
+            // 显示打字中
+            var typing = document.createElement('div');
+            typing.className = 'sfw-msg spirit';
+            typing.textContent = '...';
+            typing.id = 'sfw-typing';
+            panelMessages.appendChild(typing);
+            scrollMessages();
+
+            axios.post(API + '/spirit/chat', {
+                userId: userId, sessionId: chatSessionId, message: msg, personalityKey: currentPersonalityKey
+            }).then(function(res) {
+                var typingEl = document.getElementById('sfw-typing');
+                if (typingEl) typingEl.remove();
+                if (res.data.code === 200 && res.data.data) {
+                    var d = res.data.data;
+                    chatSessionId = d.sessionId;
+                    addMessage(d.spiritMessage || '...', 'spirit');
+                    // 更新情绪
+                    if (d.emotion) {
+                        emotionEl.textContent = emotionMap[d.emotion] || '🙂';
+                    }
+                } else {
+                    addMessage('嗯...让我想想', 'spirit');
+                }
+            }).catch(function() {
+                var typingEl = document.getElementById('sfw-typing');
+                if (typingEl) typingEl.remove();
+                addMessage('网络好像有点问题...', 'spirit');
+            });
+        };
+
+        // ===== 喂食功能 =====
+        window._sfwFeed = function() {
+            bounceWidget();
+            axios.post(API + '/spirit/feed', null, {
+                params: { userId: userId, eventType: 'manual_feed', feedValue: 10 }
+            }).then(function(res) {
+                if (res.data.code === 200 && res.data.data) {
+                    var s = res.data.data;
+                    addMessage('好吃！经验+' + 10 + '！饱食度+' + 5 + '！', 'spirit');
+                    sparkle(4, ['🍖','✨','💕','⭐']);
+                    loadState();
+                    // 如果有等级变化，显示进化提示
+                    if (spiritData && s.level > (spiritData.level || 0)) {
+                        setTimeout(function() {
+                            addMessage('我进化了！升级为 Lv.' + s.level + ' ' + (s.levelName || '') + '！', 'spirit');
+                            sparkle(8, ['🎉','✨','🌟','💫','🎊','⭐','🏆','💖']);
+                            glowPulse();
+                        }, 500);
+                    }
+                } else {
+                    addMessage('好像没吃饱...再试一次？', 'spirit');
+                }
+            }).catch(function() {
+                addMessage('网络好像有点问题，喂食失败了...', 'spirit');
+            });
+        };
+
+        // ===== 问候功能 =====
+        window._sfwGreet = function() {
+            addMessage('让我看看你今天的状态...', 'user');
+            axios.get(API + '/spirit/greet', { params: {userId: userId} }).then(function(res) {
+                if (res.data.code === 200 && res.data.data) {
+                    var d = res.data.data;
+                    var msg = d.greeting || '你好呀~';
+                    if (d.suggestion) msg += '\n' + d.suggestion;
+                    addMessage(msg, 'spirit');
+                    showSpeech(d.greeting || '你好~', 5000);
+                }
+            }).catch(function() {
+                addMessage('让我休息一下再聊...', 'spirit');
+            });
+        };
+
+        // ===== 动画效果 =====
+        function bounceWidget() {
+            body.style.animation = 'none';
+            void body.offsetWidth;
+            body.style.animation = 'sfw-bounce 0.6s ease-out';
+            setTimeout(function() { body.style.animation = 'sfw-idle 3s ease-in-out infinite'; }, 650);
+        }
+        function glowPulse() {
+            body.style.animation = 'none';
+            void body.offsetWidth;
+            body.style.animation = 'sfw-glow 1.2s ease-out';
+            setTimeout(function() { body.style.animation = 'sfw-idle 3s ease-in-out infinite'; }, 1300);
+        }
+        function shakeWidget() {
+            body.style.animation = 'none';
+            void body.offsetWidth;
+            body.style.animation = 'sfw-shake 0.5s ease-in-out';
+            setTimeout(function() { body.style.animation = 'sfw-idle 3s ease-in-out infinite'; }, 550);
+        }
+
+        function sparkle(count, emojis) {
+            var rect = body.getBoundingClientRect();
+            var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+            for (var i = 0; i < count; i++) {
+                var s = document.createElement('div');
+                s.className = 'sfw-sparkle';
+                s.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                s.style.left = cx + 'px'; s.style.top = cy + 'px';
+                s.style.setProperty('--sx', (Math.random() - 0.5) * 80 + 'px');
+                s.style.setProperty('--sy', -(Math.random() * 60 + 20) + 'px');
+                document.body.appendChild(s);
+                setTimeout(function() { s.remove(); }, 1000);
+            }
+        }
+
+        function showReactionToast(icon, message) {
+            if (pendingToast) { pendingToast.remove(); pendingToast = null; }
+            if (reactionTimer) clearTimeout(reactionTimer);
+            var rect = body.getBoundingClientRect();
+            var toast = document.createElement('div');
+            toast.className = 'sfw-reaction-toast';
+            toast.innerHTML = '<span style="font-size:18px;">' + icon + '</span>' + escapeHtmlSfw(message);
+            toast.style.left = Math.max(8, Math.min(window.innerWidth - 290, rect.left - 100)) + 'px';
+            toast.style.top = Math.max(8, rect.top - 50) + 'px';
+            document.body.appendChild(toast);
+            pendingToast = toast;
+            reactionTimer = setTimeout(function() {
+                if (toast.parentNode) toast.remove();
+                if (pendingToast === toast) pendingToast = null;
+            }, 3300);
+        }
+
+        function escapeHtmlSfw(text) {
+            if (!text) return '';
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ===== 双击喂食 =====
+        body.addEventListener('dblclick', function(e) {
+            e.preventDefault();
+            window._sfwFeed();
+        });
+
+        // ===== SpiritNotify — 全局事件总线 =====
+        window.SpiritNotify = {
+            celebrate: function(message, expGained, eventType) {
+                var exp = expGained || 0;
+                bounceWidget();
+                glowPulse();
+                sparkle(6, ['🎉','✨','🌟','💫','🎊']);
+                showReactionToast('🎉', message + (exp > 0 ? '  +' + exp + 'exp' : ''));
+                showSpeech(message, 5000);
+                if (exp > 0 && eventType) {
+                    axios.post(API + '/spirit/feed', null, {
+                        params: { userId: userId, eventType: eventType, feedValue: exp }
+                    }).then(function() { setTimeout(loadState, 1500); }).catch(function() {});
+                } else {
+                    setTimeout(loadState, 1500);
+                }
+            },
+            encourage: function(message) {
+                bounceWidget();
+                sparkle(3, ['💪','👏','⭐']);
+                showReactionToast('💬', message);
+                showSpeech(message, 4000);
+            },
+            feed: function(eventType, feedValue) {
+                axios.post(API + '/spirit/feed', null, {
+                    params: { userId: userId, eventType: eventType || 'learning_action', feedValue: feedValue || 3 }
+                }).then(function() { setTimeout(loadState, 1000); }).catch(function() {});
+            },
+            setContext: function(context) {
+                if (context) {
+                    contextLabel.textContent = context;
+                    widget.classList.add('has-context');
+                } else {
+                    widget.classList.remove('has-context');
+                }
+            },
+            refresh: function() { loadState(); },
+            getUserId: function() { return userId; },
+
+            // ===== 核心新增：根据答题分数实时反应 =====
+            reactToAnswer: function(score, message) {
+                // score: 0~1 分数，message: 可选的额外消息
+                var pct = Math.round(score * 100);
+                if (score >= 0.8) {
+                    // 答得好！开心+奖励
+                    bounceWidget();
+                    glowPulse();
+                    sparkle(8, ['🎉','✨','🌟','💫','🎊','⭐','🏆','💖']);
+                    var exp = 15 + Math.floor(score * 10);
+                    var msg = message || ('太棒了！得分' + pct + '%！你真厉害！');
+                    showReactionToast('😍', msg + '  +' + exp + 'exp');
+                    showSpeech(msg, 5000);
+                    // 临时切换情绪
+                    body.className = body.className.replace(/emotion-\w+/, 'emotion-EXCITED');
+                    setTimeout(function() { loadState(); }, 4000);
+                    // 喂食奖励
+                    axios.post(API + '/spirit/feed', null, {
+                        params: { userId: userId, eventType: 'feynman_good_answer', feedValue: exp }
+                    }).then(function() { setTimeout(loadState, 5000); }).catch(function() {});
+                } else if (score >= 0.5) {
+                    // 还行，鼓励
+                    bounceWidget();
+                    sparkle(3, ['💪','📝','🤔']);
+                    var exp = 5 + Math.floor(score * 5);
+                    var msg = message || ('不错哦，得分' + pct + '%，继续加油！');
+                    showReactionToast('😊', msg + '  +' + exp + 'exp');
+                    showSpeech(msg, 4000);
+                    body.className = body.className.replace(/emotion-\w+/, 'emotion-HAPPY');
+                    setTimeout(function() { loadState(); }, 3000);
+                    axios.post(API + '/spirit/feed', null, {
+                        params: { userId: userId, eventType: 'feynman_ok_answer', feedValue: exp }
+                    }).then(function() { setTimeout(loadState, 4000); }).catch(function() {});
+                } else {
+                    // 答得不好，生气/失望
+                    sparkle(2, ['😤','❌']);
+                    var msg = message || ('得分' + pct + '%...再想想？我可以提示你！');
+                    showReactionToast('😤', msg);
+                    showSpeech(msg, 5000);
+                    body.className = body.className.replace(/emotion-\w+/, 'emotion-HUNGRY');
+                    // 生气抖动
+                    body.style.animation = 'none';
+                    body.offsetHeight; // reflow
+                    body.style.animation = 'sfw-angry-shake 0.5s ease-in-out 3';
+                    setTimeout(function() { loadState(); }, 5000);
+                }
+            }
+        };
+
+        // 自动检测页面上下文
+        (function autoContext() {
+            var path = window.location.pathname;
+            var contexts = {
+                '/plans': '制定学习计划中',
+                '/progress': '查看学习进度中',
+                '/companion': '与精灵互动中',
+                '/knowledge-points': '浏览知识点中',
+                '/ai': 'AI学习中心',
+                '/ask': '正在提问',
+                '/stats': '查看数据统计'
+            };
+            var matched = '';
+            Object.keys(contexts).forEach(function(prefix) {
+                if (path.startsWith(prefix) && prefix.length > matched.length) matched = prefix;
+            });
+            if (matched) SpiritNotify.setContext(contexts[matched]);
+        })();
+
+        // ===== 调试：Shift+0~5 预览不同等级形态 =====
+        document.addEventListener('keydown', function(e) {
+            if (!e.shiftKey) return;
+            var lv = parseInt(e.key);
+            if (isNaN(lv) || lv < 0 || lv > 5) return;
+            e.preventDefault();
+            var names = ['种子','芽苗','幼灵','成灵','精灵使','贤者'];
+            body.className = 'sfw-body lv' + lv + ' emotion-CALM';
+            levelTag.textContent = 'Lv.' + lv;
+            var decos = body.querySelectorAll('.sfw-deco');
+            for (var i = 0; i < decos.length; i++) {
+                var minLv = parseInt(decos[i].getAttribute('data-min-level')) || 0;
+                decos[i].style.display = lv >= minLv ? '' : 'none';
+            }
+            showSpeech('Lv.' + lv + ' ' + names[lv], 3000);
+            sparkle(4, ['✨','🌟','💫','⭐']);
+        });
+    })();
+    </script>
+</div>
+</body>
+</html>

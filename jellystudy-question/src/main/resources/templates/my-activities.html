@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('我的动态 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .activities-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 24px;
+        }
+        .activity-sidebar {
+            position: sticky;
+            top: 80px;
+            align-self: start;
+        }
+        .activity-sidebar .card {
+            margin-bottom: 16px;
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 16px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 12px 8px;
+            background: #fafafa;
+            border-radius: var(--radius-md);
+            transition: all 0.2s;
+        }
+        .stat-item:hover {
+            background: var(--primary-light);
+        }
+        .stat-item .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        .stat-item .label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .type-filter-list {
+            padding: 8px 0;
+        }
+        .type-filter-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            color: #666;
+        }
+        .type-filter-item:hover {
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+        .type-filter-item.active {
+            background: var(--primary-light);
+            color: var(--primary-color);
+            font-weight: 600;
+            border-left: 3px solid var(--primary-color);
+        }
+        .type-filter-item .icon {
+            margin-right: 8px;
+        }
+        .type-filter-item .count {
+            font-size: 12px;
+            background: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: #999;
+        }
+        .type-filter-item.active .count {
+            background: var(--primary-color);
+            color: #fff;
+        }
+        .activity-main-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .activity-main-header h2 {
+            font-size: 18px;
+            color: #333;
+        }
+        .ai-analysis-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .ai-analysis-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .ai-analysis-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .activity-timeline {
+            position: relative;
+        }
+        .activity-item {
+            display: flex;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-light);
+            transition: background 0.2s;
+        }
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+        .activity-item:hover {
+            background: #fafafa;
+            border-radius: var(--radius-md);
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .activity-icon.question { background: #e6f7ff; }
+        .activity-icon.answer { background: #f6ffed; }
+        .activity-icon.comment { background: #fff7e6; }
+        .activity-icon.like { background: #fff1f0; }
+        .activity-icon.browse { background: #f9f0ff; }
+        .activity-icon.study { background: #e6fffb; }
+        .activity-icon.plan_create { background: #fcffe6; }
+        .activity-icon.plan_complete { background: #f0f5ff; }
+        .activity-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .activity-body .action-text {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.6;
+        }
+        .activity-body .action-text strong {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        .activity-body .target-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .activity-body .target-title a {
+            color: #333;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .activity-body .target-title a:hover {
+            color: var(--primary-color);
+        }
+        .activity-body .content-preview {
+            font-size: 13px;
+            color: #666;
+            margin-top: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.5;
+        }
+        .activity-body .meta {
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .activity-body .type-badge {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .type-badge.question { background: #e6f7ff; color: #1890ff; }
+        .type-badge.answer { background: #f6ffed; color: #52c41a; }
+        .type-badge.comment { background: #fff7e6; color: #fa8c16; }
+        .type-badge.like { background: #fff1f0; color: #ff4d4f; }
+        .type-badge.browse { background: #f9f0ff; color: #722ed1; }
+        .type-badge.study { background: #e6fffb; color: #13c2c2; }
+        .type-badge.plan_create { background: #fcffe6; color: #a0d911; }
+        .type-badge.plan_complete { background: #f0f5ff; color: #2f54eb; }
+        .ai-analysis-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .ai-analysis-modal.show {
+            display: flex;
+        }
+        .ai-analysis-box {
+            background: #fff;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .ai-analysis-box h3 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .ai-analysis-content {
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius-md);
+            color: white;
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-y: auto;
+            max-height: 50vh;
+            flex: 1;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .empty-state .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        .load-more-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 8px 32px;
+            background: #fff;
+            border: 1px solid #d9d9d9;
+            border-radius: 20px;
+            color: #666;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .load-more-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+        .chart-container {
+            padding: 16px;
+        }
+        .chart-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .chart-bar-row .label {
+            width: 60px;
+            font-size: 12px;
+            color: #666;
+            text-align: right;
+        }
+        .chart-bar-row .bar {
+            flex: 1;
+            height: 16px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .chart-bar-row .bar-fill {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.5s ease;
+        }
+        .chart-bar-row .count {
+            font-size: 12px;
+            color: #999;
+            min-width: 30px;
+        }
+        @media (max-width: 768px) {
+            .activities-layout {
+                grid-template-columns: 1fr;
+            }
+            .activity-sidebar {
+                position: static;
+            }
+            .stat-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('activities')"></div>
+
+    <div class="container">
+        <div id="not-logged-in-view" style="display:none;">
+            <div class="empty-state">
+                <div class="icon">📋</div>
+                <h2>我的动态</h2>
+                <p>登录后即可查看您的行为记录和活动统计</p>
+                <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="JellyStudyApp.showRegisterModal()">立即注册</button>
+                    <button class="btn btn-secondary" onclick="JellyStudyApp.showLoginModal()">已有账号登录</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="logged-in-view" style="display:none;">
+            <div class="activities-layout">
+                <div class="activity-sidebar">
+                    <div class="card">
+                        <div class="card-header">活动统计</div>
+                        <div class="stat-grid" id="stats-grid">
+                            <div class="stat-item">
+                                <div class="value" id="stat-total">0</div>
+                                <div class="label">总动态</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="value" id="stat-questions">0</div>
+                                <div class="label">提问</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="value" id="stat-answers">0</div>
+                                <div class="label">回答</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="value" id="stat-comments">0</div>
+                                <div class="label">评论</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="value" id="stat-likes">0</div>
+                                <div class="label">点赞</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="value" id="stat-study">0</div>
+                                <div class="label">学习</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">活动分布</div>
+                        <div class="chart-container" id="chart-container"></div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">筛选类型</div>
+                        <div class="type-filter-list" id="type-filter-list">
+                            <div class="type-filter-item active" data-type="ALL" onclick="filterByType('ALL')">
+                                <span><span class="icon">📊</span>全部</span>
+                                <span class="count" id="filter-count-ALL">0</span>
+                            </div>
+                            <div class="type-filter-item" data-type="QUESTION" onclick="filterByType('QUESTION')">
+                                <span><span class="icon">❓</span>提问</span>
+                                <span class="count" id="filter-count-QUESTION">0</span>
+                            </div>
+                            <div class="type-filter-item" data-type="ANSWER" onclick="filterByType('ANSWER')">
+                                <span><span class="icon">💡</span>回答</span>
+                                <span class="count" id="filter-count-ANSWER">0</span>
+                            </div>
+                            <div class="type-filter-item" data-type="COMMENT" onclick="filterByType('COMMENT')">
+                                <span><span class="icon">💬</span>评论</span>
+                                <span class="count" id="filter-count-COMMENT">0</span>
+                            </div>
+                            <div class="type-filter-item" data-type="LIKE" onclick="filterByType('LIKE')">
+                                <span><span class="icon">👍</span>点赞</span>
+                                <span class="count" id="filter-count-LIKE">0</span>
+                            </div>
+                            <div class="type-filter-item" data-type="BROWSE" onclick="filterByType('BROWSE')">
+                                <span><span class="icon">👀</span>浏览</span>
+                                <span class="count" id="filter-count-BROWSE">0</span>
+                            </div>
+                            <div class="type-filter-item" data-type="STUDY" onclick="filterByType('STUDY')">
+                                <span><span class="icon">📚</span>学习</span>
+                                <span class="count" id="filter-count-STUDY">0</span>
+                            </div>
+                            <div class="type-filter-item" data-type="PLAN_CREATE" onclick="filterByType('PLAN_CREATE')">
+                                <span><span class="icon">📋</span>创建计划</span>
+                                <span class="count" id="filter-count-PLAN_CREATE">0</span>
+                            </div>
+                            <div class="type-filter-item" data-type="PLAN_COMPLETE" onclick="filterByType('PLAN_COMPLETE')">
+                                <span><span class="icon">✅</span>完成计划</span>
+                                <span class="count" id="filter-count-PLAN_COMPLETE">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="activity-main">
+                    <div class="activity-main-header">
+                        <h2 id="activity-title">全部动态</h2>
+                        <button class="ai-analysis-btn" id="ai-analysis-btn" onclick="showAIAnalysis()">🤖 AI行为分析</button>
+                    </div>
+                    <div class="card">
+                        <div class="card-body" style="padding: 8px 20px;">
+                            <div id="activity-timeline" class="activity-timeline"></div>
+                        </div>
+                    </div>
+                    <button class="load-more-btn" id="load-more-btn" style="display:none;" onclick="loadMore()">加载更多</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ai-analysis-modal" id="ai-analysis-modal">
+        <div class="ai-analysis-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">🤖 AI行为分析</h3>
+                <button class="modal-close" onclick="hideAIAnalysis()">&times;</button>
+            </div>
+            <div class="ai-analysis-content" id="ai-analysis-content">AI正在分析您的学习行为...</div>
+        </div>
+    </div>
+
+    <div th:replace="fragments :: footer"></div>
+
+    <script>
+        var allActivities = [];
+        var filteredActivities = [];
+        var currentFilter = 'ALL';
+        var displayCount = 20;
+        var activityStats = {};
+
+        var TYPE_CONFIG = {
+            QUESTION: { icon: '❓', label: '提问', action: '提出了问题', cssClass: 'question' },
+            ANSWER: { icon: '💡', label: '回答', action: '回答了问题', cssClass: 'answer' },
+            COMMENT: { icon: '💬', label: '评论', action: '发表了评论', cssClass: 'comment' },
+            LIKE: { icon: '👍', label: '点赞', action: '赞了', cssClass: 'like' },
+            BROWSE: { icon: '👀', label: '浏览', action: '浏览了', cssClass: 'browse' },
+            STUDY: { icon: '📚', label: '学习', action: '学习了', cssClass: 'study' },
+            PLAN_CREATE: { icon: '📋', label: '创建计划', action: '创建了学习计划', cssClass: 'plan_create' },
+            PLAN_COMPLETE: { icon: '✅', label: '完成计划', action: '完成了学习计划阶段', cssClass: 'plan_complete' }
+        };
+
+        var BAR_COLORS = {
+            QUESTION: '#1890ff',
+            ANSWER: '#52c41a',
+            COMMENT: '#fa8c16',
+            LIKE: '#ff4d4f',
+            BROWSE: '#722ed1',
+            STUDY: '#13c2c2',
+            PLAN_CREATE: '#a0d911',
+            PLAN_COMPLETE: '#2f54eb'
+        };
+
+        function checkLoginState() {
+            var user = JellyStudyApp.getUser();
+            if (user && user.role !== 'GUEST') {
+                document.getElementById('not-logged-in-view').style.display = 'none';
+                document.getElementById('logged-in-view').style.display = 'block';
+                loadActivityData();
+            } else {
+                document.getElementById('not-logged-in-view').style.display = 'block';
+                document.getElementById('logged-in-view').style.display = 'none';
+            }
+        }
+
+        function loadActivityData() {
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+
+            axios.get('/api/activities/user/' + user.id)
+                .then(function(response) {
+                    allActivities = response.data || [];
+                    filteredActivities = allActivities.slice();
+                    renderActivities();
+                })
+                .catch(function(error) {
+                    console.error('加载活动数据失败:', error);
+                });
+
+            axios.get('/api/activities/user/' + user.id + '/stats')
+                .then(function(response) {
+                    activityStats = response.data || {};
+                    renderStats();
+                    renderChart();
+                    renderFilterCounts();
+                })
+                .catch(function(error) {
+                    console.error('加载统计数据失败:', error);
+                });
+        }
+
+        function renderStats() {
+            document.getElementById('stat-total').textContent = activityStats.totalActivities || 0;
+            document.getElementById('stat-questions').textContent = activityStats.questionCount || 0;
+            document.getElementById('stat-answers').textContent = activityStats.answerCount || 0;
+            document.getElementById('stat-comments').textContent = activityStats.commentCount || 0;
+            document.getElementById('stat-likes').textContent = activityStats.likeCount || 0;
+            document.getElementById('stat-study').textContent = activityStats.studyCount || 0;
+        }
+
+        function renderChart() {
+            var container = document.getElementById('chart-container');
+            var distribution = activityStats.typeDistribution || {};
+            var maxCount = 0;
+            Object.values(distribution).forEach(function(v) {
+                if (v > maxCount) maxCount = v;
+            });
+            if (maxCount === 0) maxCount = 1;
+
+            var types = ['QUESTION', 'ANSWER', 'COMMENT', 'LIKE', 'BROWSE', 'STUDY'];
+            var html = '';
+            types.forEach(function(type) {
+                var count = distribution[type] || 0;
+                var config = TYPE_CONFIG[type];
+                var percent = Math.round((count / maxCount) * 100);
+                html += '<div class="chart-bar-row">';
+                html += '<span class="label">' + config.label + '</span>';
+                html += '<div class="bar"><div class="bar-fill" style="width:' + percent + '%;background:' + BAR_COLORS[type] + '"></div></div>';
+                html += '<span class="count">' + count + '</span>';
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        function renderFilterCounts() {
+            var distribution = activityStats.typeDistribution || {};
+            document.getElementById('filter-count-ALL').textContent = activityStats.totalActivities || 0;
+            Object.keys(TYPE_CONFIG).forEach(function(type) {
+                var el = document.getElementById('filter-count-' + type);
+                if (el) el.textContent = distribution[type] || 0;
+            });
+        }
+
+        function filterByType(type) {
+            currentFilter = type;
+            displayCount = 20;
+
+            document.querySelectorAll('.type-filter-item').forEach(function(item) {
+                item.classList.remove('active');
+                if (item.dataset.type === type) item.classList.add('active');
+            });
+
+            if (type === 'ALL') {
+                filteredActivities = allActivities.slice();
+                document.getElementById('activity-title').textContent = '全部动态';
+            } else {
+                filteredActivities = allActivities.filter(function(a) { return a.activityType === type; });
+                var config = TYPE_CONFIG[type];
+                document.getElementById('activity-title').textContent = config.label + '动态';
+            }
+
+            renderActivities();
+        }
+
+        function renderActivities() {
+            var container = document.getElementById('activity-timeline');
+            if (filteredActivities.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><h3>暂无动态</h3><p>开始你的学习之旅吧！提问、回答、点赞都会记录在这里</p></div>';
+                document.getElementById('load-more-btn').style.display = 'none';
+                return;
+            }
+
+            var toShow = filteredActivities.slice(0, displayCount);
+            var html = '';
+            toShow.forEach(function(activity) {
+                html += renderActivityItem(activity);
+            });
+            container.innerHTML = html;
+
+            if (displayCount < filteredActivities.length) {
+                document.getElementById('load-more-btn').style.display = 'block';
+            } else {
+                document.getElementById('load-more-btn').style.display = 'none';
+            }
+        }
+
+        function renderActivityItem(activity) {
+            var config = TYPE_CONFIG[activity.activityType] || { icon: '📌', label: '动态', action: '进行了操作', cssClass: 'browse' };
+            var timeStr = formatTime(activity.createTime);
+            var targetLink = getTargetLink(activity);
+
+            var html = '<div class="activity-item">';
+            html += '<div class="activity-icon ' + config.cssClass + '">' + config.icon + '</div>';
+            html += '<div class="activity-body">';
+            html += '<div class="action-text">' + config.action;
+            if (activity.targetTitle) {
+                if (targetLink) {
+                    html += ' <strong><a href="' + targetLink + '">' + escapeHtml(activity.targetTitle) + '</a></strong>';
+                } else {
+                    html += ' <strong>' + escapeHtml(activity.targetTitle) + '</strong>';
+                }
+            }
+            html += '</div>';
+            if (activity.content) {
+                html += '<div class="content-preview">' + escapeHtml(activity.content) + '</div>';
+            }
+            html += '<div class="meta">';
+            html += '<span class="type-badge ' + config.cssClass + '">' + config.label + '</span>';
+            html += '<span>' + timeStr + '</span>';
+            if (activity.metadata && activity.metadata.duration) {
+                html += '<span>时长 ' + activity.metadata.duration + '分钟</span>';
+            }
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            return html;
+        }
+
+        function getTargetLink(activity) {
+            if (!activity.targetId) return '';
+            if (activity.activityType === 'QUESTION' || activity.activityType === 'ANSWER' || activity.activityType === 'COMMENT' || activity.activityType === 'LIKE') {
+                if (activity.metadata && activity.metadata.questionId) {
+                    return '/question?id=' + activity.metadata.questionId;
+                }
+                return '/question?id=' + activity.targetId;
+            }
+            if (activity.activityType === 'PLAN_CREATE' || activity.activityType === 'PLAN_COMPLETE') {
+                return '/plans';
+            }
+            if (activity.activityType === 'STUDY') {
+                return '/progress';
+            }
+            return '';
+        }
+
+        function formatTime(dateStr) {
+            if (!dateStr) return '';
+            var date = new Date(dateStr);
+            var now = new Date();
+            var diff = now - date;
+            if (diff < 60000) return '刚刚';
+            if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+            if (diff < 604800000) return Math.floor(diff / 86400000) + '天前';
+            return date.toLocaleDateString();
+        }
+
+        function loadMore() {
+            displayCount += 20;
+            renderActivities();
+        }
+
+        function showAIAnalysis() {
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+
+            document.getElementById('ai-analysis-modal').classList.add('show');
+            document.getElementById('ai-analysis-content').textContent = 'AI正在分析您的学习行为，请稍候...';
+            document.getElementById('ai-analysis-btn').disabled = true;
+
+            axios.get('/api/activities/user/' + user.id + '/ai-analysis')
+                .then(function(response) {
+                    document.getElementById('ai-analysis-btn').disabled = false;
+                    if (response.data.success) {
+                        document.getElementById('ai-analysis-content').textContent = response.data.analysis || '暂无分析结果';
+                    } else {
+                        document.getElementById('ai-analysis-content').textContent = '分析失败: ' + (response.data.message || '未知错误');
+                    }
+                })
+                .catch(function(error) {
+                    document.getElementById('ai-analysis-btn').disabled = false;
+                    document.getElementById('ai-analysis-content').textContent = 'AI分析暂时不可用: ' + error.message;
+                });
+        }
+
+        function hideAIAnalysis() {
+            document.getElementById('ai-analysis-modal').classList.remove('show');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        afterLogin = function(user) { checkLoginState(); };
+        afterLogout = function() { checkLoginState(); };
+
+        checkLoginState();
+    </script>
+</body>
+</html>

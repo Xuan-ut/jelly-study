@@ -1,0 +1,30 @@
+CREATE DATABASE IF NOT EXISTS jellystudy_users DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE jellystudy_users;
+
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    nickname VARCHAR(100),
+    role VARCHAR(50) DEFAULT 'USER',
+    is_guest BOOLEAN DEFAULT FALSE,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS nacos_config (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    data_id VARCHAR(255) NOT NULL,
+    group_id VARCHAR(255),
+    content TEXT,
+    md5 VARCHAR(32),
+    gmt_create DATETIME DEFAULT CURRENT_TIMESTAMP,
+    gmt_modified DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    src_user VARCHAR(50),
+    src_ip VARCHAR(50),
+    app_name VARCHAR(128),
+    tenant_id VARCHAR(128) DEFAULT '',
+    c_desc VARCHAR(256),
+    c_schema TEXT,
+    encrypted_data_key VARCHAR(255) DEFAULT ''
+);

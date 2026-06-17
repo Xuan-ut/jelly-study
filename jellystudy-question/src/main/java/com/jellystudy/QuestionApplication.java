@@ -1,0 +1,17 @@
+package com.jellystudy;
+
+import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
+
+@SpringBootApplication
+@EnableDubbo
+@EnableMongoRepositories(basePackages = "com.jellystudy.repository")
+public class QuestionApplication {
+    public static void main(String[] args) {
+        System.setProperty("nacos.logging.path", System.getProperty("user.dir") + "/logs/nacos");
+        System.setProperty("dubbo.metadata-report.address", "nacos://localhost:8848");
+        SpringApplication.run(QuestionApplication.class, args);
+    }
+}

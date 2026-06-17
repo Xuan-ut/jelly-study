@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('知识点管理 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .form-group {
+            margin-bottom: 24px;
+        }
+        .form-group textarea {
+            min-height: 120px;
+        }
+        .form-actions {
+            margin-top: 32px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        .search-box input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: #0f88eb;
+            box-shadow: 0 0 0 2px rgba(15, 136, 235, 0.1);
+        }
+        .search-box input::placeholder {
+            color: #b0b0b0;
+        }
+        .search-box .btn {
+            white-space: nowrap;
+        }
+        .search-result-info {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 12px;
+            padding: 8px 0;
+        }
+        .search-result-info strong {
+            color: #0f88eb;
+        }
+        .knowledge-point-item {
+            padding: 16px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s ease;
+        }
+        .knowledge-point-item:hover {
+            background-color: #fafafa;
+        }
+        .knowledge-point-item:last-child {
+            border-bottom: none;
+        }
+        .knowledge-point-item h3 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        .knowledge-point-item h3 .highlight {
+            background-color: #fff3cd;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+        .knowledge-point-item .description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .knowledge-point-item .path {
+            color: #999;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+        .knowledge-point-item .actions {
+            display: flex;
+            gap: 8px;
+        }
+        .no-result {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        .no-result .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+        .no-result .text {
+            font-size: 14px;
+        }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('knowledge')"></div>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">添加知识点</div>
+            <div class="card-body">
+                <form id="add-form">
+                    <div class="form-group">
+                        <label for="name">名称</label>
+                        <input type="text" id="name" name="name" required placeholder="请输入知识点名称">
+                    </div>
+                    <div class="form-group">
+                        <label for="description">描述</label>
+                        <textarea id="description" name="description" placeholder="请输入知识点描述"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="parentId">关联知识点</label>
+                        <select id="parentId" name="parentId">
+                            <option value="">无</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">添加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">知识点列表</div>
+            <div class="card-body">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 搜索知识点名称或描述..." oninput="handleSearch()">
+                    <button class="btn btn-outline" onclick="clearSearch()">清除</button>
+                </div>
+                <div id="searchResultInfo" class="search-result-info" style="display:none;"></div>
+                <div id="knowledge-points-list"></div>
+            </div>
+        </div>
+    </div>
+    
+
+    
+    <script>
+        let allKnowledgePoints = [];
+        
+        function loadKnowledgePoints() {
+            axios.get('/api/knowledge-points/with-stats')
+                .then(response => {
+                    allKnowledgePoints = response.data;
+                    renderKnowledgePoints(allKnowledgePoints);
+                });
+        }
+        
+        function renderKnowledgePoints(knowledgePoints, keyword) {
+            const container = document.getElementById('knowledge-points-list');
+            const infoDiv = document.getElementById('searchResultInfo');
+            
+            if (keyword && keyword.trim()) {
+                infoDiv.style.display = 'block';
+                infoDiv.innerHTML = `找到 <strong>${knowledgePoints.length}</strong> 个匹配"${escapeHtml(keyword)}"的知识点`;
+            } else {
+                infoDiv.style.display = 'none';
+            }
+            
+            container.innerHTML = '';
+            
+            if (knowledgePoints.length === 0) {
+                if (keyword && keyword.trim()) {
+                    container.innerHTML = `<div class="no-result"><div class="icon">🔍</div><div class="text">未找到匹配"${escapeHtml(keyword)}"的知识点</div></div>`;
+                } else {
+                    container.innerHTML = `<div class="no-result"><div class="icon">📚</div><div class="text">暂无知识点，请添加</div></div>`;
+                }
+                return;
+            }
+            
+            knowledgePoints.forEach(kp => {
+                const div = document.createElement('div');
+                div.className = 'knowledge-point-item';
+                
+                let nameHtml = escapeHtml(kp.name);
+                let descHtml = escapeHtml(kp.description || '无描述');
+                
+                if (keyword && keyword.trim()) {
+                    nameHtml = highlightText(kp.name, keyword);
+                    descHtml = highlightText(kp.description || '无描述', keyword);
+                }
+                
+                div.innerHTML = `
+                    <h3>${nameHtml}</h3>
+                    <div class="description">${descHtml}</div>
+                    <div class="path">路径: ${kp.path || '/'} | 相关问题: <strong style="color: #1890ff;">${kp.questionCount || 0}</strong> 个</div>
+                    <div class="actions">
+                        <button class="btn btn-primary" onclick="viewRelatedQuestions('${kp.id}', '${escapeHtml(kp.name)}')">查看相关问题</button>
+                        <button class="btn btn-danger" onclick="deleteKnowledgePoint('${kp.id}')">删除</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        function highlightText(text, keyword) {
+            if (!keyword || !keyword.trim()) return escapeHtml(text);
+            const escaped = escapeHtml(text);
+            const escapedKeyword = escapeHtml(keyword.trim());
+            const regex = new RegExp(`(${escapedKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return escaped.replace(regex, '<span class="highlight">$1</span>');
+        }
+        
+        function handleSearch() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            
+            if (!keyword) {
+                renderKnowledgePoints(allKnowledgePoints);
+                return;
+            }
+            
+            const lowerKeyword = keyword.toLowerCase();
+            const filtered = allKnowledgePoints.filter(kp => {
+                const nameMatch = kp.name && kp.name.toLowerCase().includes(lowerKeyword);
+                const descMatch = kp.description && kp.description.toLowerCase().includes(lowerKeyword);
+                return nameMatch || descMatch;
+            });
+            
+            renderKnowledgePoints(filtered, keyword);
+        }
+        
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            renderKnowledgePoints(allKnowledgePoints);
+        }
+        
+        function loadParentOptions() {
+            axios.get('/api/knowledge-points')
+                .then(response => {
+                    const knowledgePoints = response.data;
+                    const select = document.getElementById('parentId');
+                    select.innerHTML = '<option value="">无</option>';
+                    knowledgePoints.forEach(kp => {
+                        const option = document.createElement('option');
+                        option.value = kp.id;
+                        option.text = kp.name;
+                        select.appendChild(option);
+                    });
+                });
+        }
+        
+        function deleteKnowledgePoint(id) {
+            if (confirm('确定要删除这个知识点吗？')) {
+                axios.delete(`/api/knowledge-points/${id}`)
+                    .then(() => {
+                        loadKnowledgePoints();
+                        loadParentOptions();
+                    });
+            }
+        }
+        
+        document.getElementById('add-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const parentId = formData.get('parentId');
+            
+            let path = '';
+            if (parentId) {
+                path = parentId + '/';
+            }
+            
+            const knowledgePoint = {
+                name: formData.get('name'),
+                description: formData.get('description'),
+                parentId: parentId,
+                path: path
+            };
+            
+            axios.post('/api/knowledge-points', knowledgePoint)
+                .then(response => {
+                    alert('知识点添加成功！');
+                    loadKnowledgePoints();
+                    loadParentOptions();
+                    this.reset();
+                })
+                .catch(error => {
+                    alert('添加失败，请重试');
+                    console.error(error);
+                });
+        });
+        
+        function viewRelatedQuestions(knowledgePointId, knowledgePointName) {
+            window.location.href = `/knowledge-point-questions?id=${knowledgePointId}&name=${encodeURIComponent(knowledgePointName)}`;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        loadKnowledgePoints();
+        loadParentOptions();
+    </script>
+
+    <div th:replace="fragments :: footer"></div>
+<div th:replace="fragments :: spirit-widget"></div>
+</body>
+</html>

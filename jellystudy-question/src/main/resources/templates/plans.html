@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('学习计划 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .plans-layout { display: grid; grid-template-columns: 280px 1fr; gap: 24px; }
+        .plan-sidebar { position: sticky; top: 80px; align-self: start; }
+        .plan-sidebar .card { margin-bottom: 16px; }
+        .plan-list-item { padding: 12px 16px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: all 0.2s; }
+        .plan-list-item:hover { background: var(--primary-light); }
+        .plan-list-item.active { background: var(--primary-light); border-left: 3px solid var(--primary-color); }
+        .plan-list-item h4 { font-size: 14px; color: #333; margin-bottom: 4px; }
+        .plan-list-item .meta { font-size: 12px; color: #999; }
+        .plan-detail-empty { text-align: center; padding: 80px 20px; color: #999; }
+        .plan-detail-empty .icon { font-size: 64px; margin-bottom: 16px; }
+        .stage-item { display: flex; align-items: flex-start; gap: 16px; padding: 16px; border-bottom: 1px solid var(--border-light); }
+        .stage-item:last-child { border-bottom: none; }
+        .stage-number { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light); color: var(--primary-color); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+        .stage-number.completed { background: #f6ffed; color: #52c41a; }
+        .stage-info { flex: 1; }
+        .stage-info h4 { font-size: 15px; color: #333; margin-bottom: 4px; }
+        .stage-info .desc { font-size: 13px; color: #666; margin-bottom: 8px; }
+        .stage-progress-bar { width: 100%; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+        .stage-progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+        .stage-progress-fill.low { background: #ff4d4f; }
+        .stage-progress-fill.mid { background: #fa8c16; }
+        .stage-progress-fill.high { background: #52c41a; }
+        .stage-percent { font-size: 13px; color: #999; min-width: 40px; text-align: right; }
+        .stage-actions { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+        .btn-complete-stage { padding: 4px 12px; background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; }
+        .btn-complete-stage:hover { background: #d9f7be; }
+        .btn-record-study { padding: 4px 12px; background: #e6f7ff; color: #1890ff; border: 1px solid #91d5ff; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; }
+        .btn-record-study:hover { background: #bae7ff; }
+        .create-form-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+        .create-form-overlay.show { display: flex; }
+        .create-form-box { background: #fff; border-radius: var(--radius-lg); padding: 24px; width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; }
+        .create-form-box h3 { font-size: 18px; margin-bottom: 20px; }
+        .form-step { display: none; }
+        .form-step.active { display: block; }
+        .step-indicator { display: flex; justify-content: center; gap: 8px; margin-bottom: 24px; }
+        .step-dot { width: 32px; height: 32px; border-radius: 50%; background: #f0f0f0; color: #999; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; }
+        .step-dot.active { background: var(--primary-color); color: #fff; }
+        .step-dot.done { background: #52c41a; color: #fff; }
+        .step-connector { width: 40px; height: 2px; background: #f0f0f0; align-self: center; }
+        .step-connector.done { background: #52c41a; }
+        .stage-input-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: #fafafa; border-radius: var(--radius-md); border: 1px solid #f0f0f0; }
+        .stage-input-row .stage-input-main { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+        .stage-input-row input, .stage-input-row textarea { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: var(--radius-sm); font-size: 14px; box-sizing: border-box; }
+        .stage-input-row textarea { min-height: 50px; resize: vertical; }
+        .stage-input-row .stage-num { min-width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light); color: var(--primary-color); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; flex-shrink: 0; margin-top: 4px; }
+        .task-input-row { display: flex; gap: 6px; align-items: center; }
+        .task-input-row input { flex: 1; padding: 6px 10px; border: 1px solid #e8e8e8; border-radius: var(--radius-sm); font-size: 13px; }
+        .task-input-row .remove-task-btn { width: 22px; height: 22px; border-radius: 50%; background: #fff1f0; color: #ff4d4f; border: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .add-task-btn { padding: 4px 10px; background: #f0f5ff; color: var(--primary-color); border: 1px dashed #adc6ff; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; margin-top: 4px; }
+        .add-task-btn:hover { background: #d6e4ff; }
+        .remove-stage-btn { padding: 6px 12px; background: #fff1f0; color: #ff4d4f; border: 1px solid #ffccc7; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; }
+        .ai-generate-box { margin-top: 16px; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: var(--radius-md); color: white; max-height: 350px; overflow-y: auto; }
+        .ai-generate-box h4 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+        .ai-generate-box .content { font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+        .ai-panel { margin-top: 16px; }
+        .ai-panel .ai-tab-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .ai-tab { padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; background: #f5f5f5; color: #666; border: 1px solid #e8e8e8; transition: all 0.2s; }
+        .ai-tab:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .ai-tab.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+        .ai-result-box { padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: var(--radius-md); color: white; max-height: 400px; overflow-y: auto; }
+        .ai-result-box .content { font-size: 14px; line-height: 1.8; white-space: pre-wrap; word-break: break-word; }
+        .study-record-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+        .study-record-modal.show { display: flex; }
+        .study-record-box { background: #fff; border-radius: var(--radius-lg); padding: 24px; width: 90%; max-width: 450px; }
+        .main-tab-bar { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0; }
+        .main-tab { padding: 10px 24px; font-size: 15px; font-weight: 600; color: #999; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+        .main-tab:hover { color: var(--primary-color); }
+        .main-tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .task-board-view { display: none; }
+        .task-board-view.active { display: block; }
+        .task-board-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .task-date-nav { display: flex; align-items: center; gap: 12px; }
+        .task-date-nav button { padding: 6px 12px; border: 1px solid #d9d9d9; border-radius: var(--radius-sm); background: #fff; cursor: pointer; font-size: 14px; }
+        .task-date-nav button:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .task-date-nav .current-date { font-size: 16px; font-weight: 600; color: #333; min-width: 120px; text-align: center; }
+        .task-board-stats { display: flex; gap: 16px; font-size: 13px; color: #999; }
+        .task-board-stats span { display: flex; align-items: center; gap: 4px; }
+        .task-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f5f5f5; transition: background 0.15s; }
+        .task-item:hover { background: #fafafa; }
+        .task-item.completed .task-content { text-decoration: line-through; color: #bbb; }
+        .task-checkbox { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #d9d9d9; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+        .task-checkbox:hover { border-color: var(--primary-color); }
+        .task-checkbox.checked { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+        .task-content { flex: 1; font-size: 14px; color: #333; }
+        .task-source { font-size: 11px; color: #bbb; background: #f5f5f5; padding: 2px 8px; border-radius: 10px; }
+        .task-delete-btn { width: 24px; height: 24px; border: none; background: none; color: #ccc; cursor: pointer; font-size: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .task-delete-btn:hover { background: #fff1f0; color: #ff4d4f; }
+        .add-task-row { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #f0f0f0; }
+        .add-task-row input { flex: 1; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: var(--radius-sm); font-size: 14px; }
+        .add-task-row input:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+        .edit-stage-btn { padding: 4px 10px; background: #f0f5ff; color: var(--primary-color); border: 1px solid #adc6ff; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; }
+        .edit-stage-btn:hover { background: #d6e4ff; }
+        .stage-edit-form { display: none; padding: 12px; background: #fafafa; border-radius: var(--radius-md); margin-top: 8px; border: 1px solid #e8e8e8; }
+        .stage-edit-form.active { display: block; }
+        .stage-edit-form .form-row { margin-bottom: 8px; }
+        .stage-edit-form label { font-size: 12px; color: #999; display: block; margin-bottom: 4px; }
+        .stage-edit-form input, .stage-edit-form textarea { width: 100%; padding: 6px 10px; border: 1px solid #d9d9d9; border-radius: var(--radius-sm); font-size: 13px; box-sizing: border-box; }
+        .stage-edit-form textarea { min-height: 40px; resize: vertical; }
+        .edit-task-row { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+        .edit-task-row input { flex: 1; }
+        @media (max-width: 768px) { .plans-layout { grid-template-columns: 1fr; } .plan-sidebar { position: static; } }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('plans')"></div>
+
+    <div class="container">
+        <div id="not-logged-in-view" style="display:none;">
+            <div class="plan-login-tip">
+                <div class="icon">📋</div>
+                <h2>学习计划</h2>
+                <p>登录后即可创建和管理您的个人学习计划，追踪学习进度</p>
+                <p style="font-size: 13px; color: #bbb; margin-bottom: 20px;">游客模式下无法保存学习计划，请注册或登录</p>
+                <div class="btn-group" style="display: flex; gap: 12px; justify-content: center;">
+                    <button class="btn btn-primary" onclick="JellyStudyApp.showRegisterModal()">立即注册</button>
+                    <button class="btn btn-secondary" onclick="JellyStudyApp.showLoginModal()">已有账号登录</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="logged-in-view" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h1 class="page-title" style="margin-bottom: 0;">我的学习计划</h1>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-primary" onclick="showCreateForm()">+ 手动创建</button>
+                    <button class="btn btn-secondary" onclick="showAICreateForm()">🤖 AI智能生成</button>
+                </div>
+            </div>
+
+            <div class="main-tab-bar">
+                <div class="main-tab active" onclick="switchMainTab('plans')" data-tab="plans">📋 学习计划</div>
+                <div class="main-tab" onclick="switchMainTab('tasks')" data-tab="tasks">📝 每日任务板</div>
+            </div>
+
+            <div id="plans-view" class="plans-layout">
+                <div class="plan-sidebar">
+                    <div class="card">
+                        <div class="card-header">计划列表</div>
+                        <div class="card-body" id="plan-list" style="padding: 0;">
+                            <div class="empty-state" style="padding: 30px;"><p>暂无学习计划</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="plan-main">
+                    <div id="plan-detail-empty" class="plan-detail-empty">
+                        <div class="icon">📝</div>
+                        <h3 style="font-size: 18px; color: #333; margin-bottom: 8px;">选择或创建一个学习计划</h3>
+                        <p>点击左侧计划查看详情，或创建新的学习计划开始您的学习之旅</p>
+                    </div>
+
+                    <div id="plan-detail" style="display:none;">
+                        <div class="card" style="margin-bottom: 16px;">
+                            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <span id="plan-detail-title">计划标题</span>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-sm btn-secondary" onclick="editPlanStages()">✏️ 编辑阶段</button>
+                                    <button class="btn btn-sm btn-secondary" onclick="deleteCurrentPlan()">删除计划</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p id="plan-detail-desc" style="color: #666; margin-bottom: 16px;"></p>
+                                <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+                                    <span style="font-size: 13px; color: #999;">总体进度</span>
+                                    <div style="flex: 1; height: 12px; background: #f0f0f0; border-radius: 6px; overflow: hidden;">
+                                        <div id="plan-overall-bar" style="height: 100%; background: linear-gradient(90deg, #52c41a, #73d13d); border-radius: 6px; transition: width 0.3s;"></div>
+                                    </div>
+                                    <span id="plan-overall-percent" style="font-size: 14px; font-weight: 600; color: #52c41a;">0%</span>
+                                </div>
+                                <div id="plan-stats-row" style="display: flex; gap: 24px; font-size: 13px; color: #999;"></div>
+                            </div>
+                        </div>
+
+                        <div class="card" style="margin-bottom: 16px;">
+                            <div class="card-header">学习阶段</div>
+                            <div class="card-body" id="plan-stages" style="padding: 0;"></div>
+                        </div>
+
+                        <div class="ai-panel">
+                            <div class="card">
+                                <div class="card-header">🤖 AI智能助手</div>
+                                <div class="card-body">
+                                    <div class="ai-tab-bar">
+                                        <div class="ai-tab active" onclick="switchAITab('recommend')" data-tab="recommend">学习建议</div>
+                                        <div class="ai-tab" onclick="switchAITab('path')" data-tab="path">学习路径</div>
+                                        <div class="ai-tab" onclick="switchAITab('weak')" data-tab="weak">薄弱点分析</div>
+                                        <div class="ai-tab" onclick="switchAITab('daily')" data-tab="daily">今日计划</div>
+                                    </div>
+                                    <div id="ai-result-area">
+                                        <p style="color: #999; font-size: 14px;">点击上方标签获取AI智能分析</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tasks-view" class="task-board-view">
+                <div class="task-board-header">
+                    <div class="task-date-nav">
+                        <button onclick="changeTaskDate(-1)">◀ 前一天</button>
+                        <span class="current-date" id="task-current-date"></span>
+                        <button onclick="changeTaskDate(1)">后一天 ▶</button>
+                        <button onclick="changeTaskDate(0)" style="margin-left:4px;">今天</button>
+                    </div>
+                    <div class="task-board-stats" id="task-board-stats"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                        <span>📋 今日任务</span>
+                        <button class="btn btn-sm btn-secondary" onclick="importPlanTasks()">📥 从计划导入任务</button>
+                    </div>
+                    <div class="card-body" id="task-board-list" style="padding:0;"></div>
+                    <div class="add-task-row">
+                        <input type="text" id="new-task-input" placeholder="输入新任务，按回车添加..." onkeydown="if(event.key==='Enter')addDailyTask()">
+                        <button class="btn btn-sm btn-primary" onclick="addDailyTask()">添加</button>
+                    </div>
+                </div>
+            </div>
+
+    <div class="create-form-overlay" id="create-form-overlay">
+        <div class="create-form-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">创建学习计划</h3>
+                <button class="modal-close" onclick="hideCreateForm()">&times;</button>
+            </div>
+            <div class="step-indicator">
+                <div class="step-dot active" id="step-dot-1">1</div>
+                <div class="step-connector" id="step-conn-1"></div>
+                <div class="step-dot" id="step-dot-2">2</div>
+                <div class="step-connector" id="step-conn-2"></div>
+                <div class="step-dot" id="step-dot-3">3</div>
+            </div>
+            <div class="form-step active" id="form-step-1">
+                <h4 style="margin-bottom: 16px;">基本信息</h4>
+                <div class="form-group">
+                    <label>计划标题 <span style="color:red">*</span></label>
+                    <input type="text" id="plan-title" required placeholder="例如：Java进阶学习计划">
+                </div>
+                <div class="form-group">
+                    <label>学习目标</label>
+                    <textarea id="plan-goal" placeholder="描述你的学习目标，例如：掌握Spring Boot微服务开发" style="min-height: 60px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>计划描述</label>
+                    <textarea id="plan-desc" placeholder="详细描述你的学习计划背景和期望" style="min-height: 80px;"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end;">
+                    <button class="btn btn-primary" onclick="goToStep(2)">下一步</button>
+                </div>
+            </div>
+            <div class="form-step" id="form-step-2">
+                <h4 style="margin-bottom: 16px;">阶段规划</h4>
+                <p style="font-size: 13px; color: #999; margin-bottom: 16px;">为学习计划设定详细的学习阶段，每个阶段可添加具体任务</p>
+                <div id="stages-container"></div>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="addStageInput()" style="margin-top: 8px;">+ 添加阶段</button>
+                <div style="display: flex; justify-content: space-between; margin-top: 16px;">
+                    <button class="btn btn-secondary" onclick="goToStep(1)">上一步</button>
+                    <button class="btn btn-primary" onclick="goToStep(3)">下一步</button>
+                </div>
+            </div>
+            <div class="form-step" id="form-step-3">
+                <h4 style="margin-bottom: 16px;">确认创建</h4>
+                <div id="plan-preview" style="padding: 16px; background: #fafafa; border-radius: var(--radius-md); margin-bottom: 16px;"></div>
+                <div style="display: flex; justify-content: space-between;">
+                    <button class="btn btn-secondary" onclick="goToStep(2)">上一步</button>
+                    <button class="btn btn-primary" onclick="handleCreatePlan()">确认创建</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="create-form-overlay" id="ai-create-form-overlay">
+        <div class="create-form-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">🤖 AI智能生成学习计划</h3>
+                <button class="modal-close" onclick="hideAICreateForm()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>学习科目 <span style="color:red">*</span></label>
+                <input type="text" id="ai-subject" required placeholder="例如：Java微服务开发">
+            </div>
+            <div class="form-group">
+                <label>学习目标</label>
+                <input type="text" id="ai-goal" placeholder="例如：能够独立开发微服务项目">
+            </div>
+            <div class="form-group">
+                <label>难度级别</label>
+                <select id="ai-difficulty">
+                    <option value="入门">入门 - 零基础开始</option>
+                    <option value="初级">初级 - 有一定基础</option>
+                    <option value="中级" selected>中级 - 有一定经验</option>
+                    <option value="高级">高级 - 深入进阶</option>
+                </select>
+            </div>
+            <div id="ai-generate-result" style="display:none; margin-top: 16px;">
+                <div class="ai-generate-box">
+                    <h4>🤖 AI生成的学习计划</h4>
+                    <div class="content" id="ai-generate-content">生成中...</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+                <button class="btn btn-secondary" onclick="hideAICreateForm()">取消</button>
+                <button class="btn btn-primary" id="ai-generate-btn" onclick="handleAIGenerate()">生成计划</button>
+                <button class="btn btn-primary" id="ai-confirm-btn" onclick="confirmAIPlan()" style="display:none;">确认采用此计划</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="study-record-modal" id="study-record-modal">
+        <div class="study-record-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">📝 记录学习</h3>
+                <button class="modal-close" onclick="hideStudyRecordModal()">&times;</button>
+            </div>
+            <p id="record-stage-name" style="font-size: 14px; color: #666; margin-bottom: 16px;"></p>
+            <div class="form-group">
+                <label>实际学习时长（分钟）</label>
+                <input type="number" id="record-duration-input" value="30" min="5" max="480">
+            </div>
+            <div class="form-group">
+                <label>学习心得（可选）</label>
+                <textarea id="record-notes" placeholder="记录你在这个阶段学到了什么" style="min-height: 80px;"></textarea>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="hideStudyRecordModal()">取消</button>
+                <button class="btn btn-primary" onclick="submitStudyRecord()">提交记录</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="create-form-overlay" id="edit-stages-overlay">
+        <div class="create-form-box" style="max-width:750px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">✏️ 编辑学习阶段</h3>
+                <button class="modal-close" onclick="hideEditStages()">&times;</button>
+            </div>
+            <div id="edit-stages-container"></div>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="addEditStageInput()" style="margin-top:8px;">+ 添加阶段</button>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="hideEditStages()">取消</button>
+                <button class="btn btn-primary" onclick="saveEditStages()">保存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="create-form-overlay" id="import-tasks-overlay">
+        <div class="create-form-box" style="max-width:500px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">📥 从计划导入任务</h3>
+                <button class="modal-close" onclick="hideImportTasks()">&times;</button>
+            </div>
+            <div id="import-tasks-list"></div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+                <button class="btn btn-secondary" onclick="hideImportTasks()">取消</button>
+                <button class="btn btn-primary" onclick="confirmImportTasks()">导入选中任务</button>
+            </div>
+        </div>
+    </div>
+
+    <div th:replace="fragments :: footer"></div>
+
+    <script>
+        var currentPlanId = null;
+        var currentPlans = [];
+        var currentStageId = null;
+        var aiGeneratedPlan = null;
+        var currentTaskDate = new Date().toISOString().split('T')[0];
+        var currentTaskBoard = null;
+
+        function checkLoginState() {
+            var user = JellyStudyApp.getUser();
+            if (user && user.role !== 'GUEST') {
+                document.getElementById('not-logged-in-view').style.display = 'none';
+                document.getElementById('logged-in-view').style.display = 'block';
+                loadPlans();
+                loadTaskBoard();
+            } else {
+                document.getElementById('not-logged-in-view').style.display = 'block';
+                document.getElementById('logged-in-view').style.display = 'none';
+            }
+        }
+
+        function loadPlans() {
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+            axios.get('/api/study-plans/user/' + user.id)
+                .then(function(response) {
+                    currentPlans = response.data || [];
+                    renderPlanList();
+                })
+                .catch(function(error) {
+                    console.error('加载计划失败:', error);
+                });
+        }
+
+        function renderPlanList() {
+            var container = document.getElementById('plan-list');
+            if (currentPlans.length === 0) {
+                container.innerHTML = '<div class="empty-state" style="padding: 30px;"><p>暂无学习计划</p><p style="font-size: 12px;">点击右上角创建</p></div>';
+                return;
+            }
+            var html = '';
+            currentPlans.forEach(function(plan) {
+                var progress = calculateOverallProgress(plan);
+                var activeClass = plan.id === currentPlanId ? ' active' : '';
+                var statusLabel = plan.status === 'COMPLETED' ? ' ✅' : '';
+                html += '<div class="plan-list-item' + activeClass + '" onclick="selectPlan(\'' + plan.id + '\')">';
+                html += '<h4>' + escapeHtml(plan.title) + statusLabel + '</h4>';
+                html += '<div class="meta">进度 ' + progress + '% · ' + (plan.stages ? plan.stages.length : 0) + '个阶段</div>';
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        function selectPlan(planId) {
+            currentPlanId = planId;
+            axios.get('/api/study-plans/' + planId)
+                .then(function(response) {
+                    if (response.data.success) {
+                        renderPlanDetail(response.data.plan);
+                        renderPlanList();
+                    }
+                })
+                .catch(function(error) { console.error('加载计划详情失败:', error); });
+        }
+
+        function renderPlanDetail(plan) {
+            document.getElementById('plan-detail-empty').style.display = 'none';
+            document.getElementById('plan-detail').style.display = 'block';
+            document.getElementById('plan-detail-title').textContent = plan.title;
+            document.getElementById('plan-detail-desc').textContent = plan.description || '暂无描述';
+
+            var progress = calculateOverallProgress(plan);
+            document.getElementById('plan-overall-bar').style.width = progress + '%';
+            document.getElementById('plan-overall-percent').textContent = progress + '%';
+
+            var completedStages = 0, inProgressStages = 0;
+            if (plan.stages) {
+                plan.stages.forEach(function(s) {
+                    if (s.status === 'COMPLETED') completedStages++;
+                    else if (s.progress > 0) inProgressStages++;
+                });
+            }
+            document.getElementById('plan-stats-row').innerHTML =
+                '<span>📋 总阶段: ' + (plan.stages ? plan.stages.length : 0) + '</span>' +
+                '<span style="color: #52c41a;">✅ 已完成: ' + completedStages + '</span>' +
+                '<span style="color: #fa8c16;">🔄 进行中: ' + inProgressStages + '</span>';
+
+            var stagesContainer = document.getElementById('plan-stages');
+            if (!plan.stages || plan.stages.length === 0) {
+                stagesContainer.innerHTML = '<div class="empty-state" style="padding: 30px;"><p>暂无学习阶段</p></div>';
+                return;
+            }
+
+            var html = '';
+            plan.stages.forEach(function(stage, index) {
+                var p = stage.progress || 0;
+                var pClass = p < 30 ? 'low' : (p < 70 ? 'mid' : 'high');
+                var completedClass = p >= 100 ? ' completed' : '';
+                var isCompleted = stage.status === 'COMPLETED' || p >= 100;
+                html += '<div class="stage-item">';
+                html += '<div class="stage-number' + completedClass + '">' + (isCompleted ? '✓' : (index + 1)) + '</div>';
+                html += '<div class="stage-info">';
+                html += '<h4>' + escapeHtml(stage.name);
+                if (stage.estimatedHours) html += ' <span style="font-size:12px;color:#999;font-weight:normal;">⏱ ' + stage.estimatedHours + '小时</span>';
+                html += (isCompleted ? ' <span style="color:#52c41a;font-size:12px;">已完成</span>' : '') + '</h4>';
+                if (stage.description) {
+                    var descLines = stage.description.split('\n');
+                    descLines.forEach(function(line) {
+                        if (line.trim()) html += '<div class="desc">' + escapeHtml(line) + '</div>';
+                    });
+                }
+                if (stage.tasks && stage.tasks.length > 0) {
+                    html += '<div style="margin-top:6px;">';
+                    html += '<div style="font-size:12px;color:#999;margin-bottom:3px;">📋 任务清单：</div>';
+                    stage.tasks.forEach(function(task, ti) {
+                        html += '<div style="font-size:13px;color:#555;padding-left:12px;line-height:1.6;">• ' + escapeHtml(task) + '</div>';
+                    });
+                    html += '</div>';
+                }
+                html += '<div class="stage-progress-bar"><div class="stage-progress-fill ' + pClass + '" style="width:' + p + '%"></div></div>';
+                html += '<div class="stage-actions">';
+                if (!isCompleted) {
+                    var sid = stage.stageId || stage.id || '';
+                    html += '<button class="btn-record-study" onclick="showStudyRecordModal(\'' + plan.id + '\',\'' + sid + '\',\'' + escapeHtml(stage.name) + '\')">📝 记录学习</button>';
+                    if (p >= 80) {
+                        html += '<button class="btn-complete-stage" onclick="completeStage(\'' + plan.id + '\',\'' + sid + '\')">✅ 完成阶段</button>';
+                    }
+                }
+                html += '<span class="stage-percent">' + p + '%</span>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            });
+            stagesContainer.innerHTML = html;
+        }
+
+        function showStudyRecordModal(planId, stageId, stageName) {
+            currentPlanId = planId;
+            currentStageId = stageId;
+            document.getElementById('record-stage-name').textContent = '阶段: ' + stageName;
+            document.getElementById('record-duration-input').value = 30;
+            document.getElementById('record-notes').value = '';
+            document.getElementById('study-record-modal').classList.add('show');
+        }
+
+        function hideStudyRecordModal() {
+            document.getElementById('study-record-modal').classList.remove('show');
+        }
+
+        function submitStudyRecord() {
+            var user = JellyStudyApp.getUser();
+            var duration = parseInt(document.getElementById('record-duration-input').value) || 30;
+            var notes = document.getElementById('record-notes').value.trim();
+
+            axios.post('/api/study-plans/progress/record', {
+                userId: user.id,
+                planId: currentPlanId,
+                stageId: currentStageId,
+                knowledgePointId: '',
+                duration: duration
+            }).then(function(response) {
+                if (response.data.success) {
+                    var plan = currentPlans.find(function(p) { return p.id === currentPlanId; });
+                    var stageName = '';
+                    if (plan && plan.stages) {
+                        var stage = plan.stages.find(function(s) { return s.stageId === currentStageId; });
+                        if (stage) stageName = stage.name;
+                    }
+                    JellyStudyApp.recordActivity('STUDY', currentStageId, stageName || '学习阶段', notes || '学习了' + duration + '分钟', { planId: currentPlanId, duration: duration });
+                    var newProgress = Math.min(100, Math.round((getStageProgress(currentPlanId, currentStageId) || 0) + duration / 2));
+                    updateStageProgress(currentPlanId, currentStageId, newProgress);
+                    hideStudyRecordModal();
+
+                    // Spirit reaction
+                    var expGained = Math.round(duration / 6); // ~5exp per 30min
+                    if (window.SpiritNotify) {
+                        SpiritNotify.celebrate('学习了' + duration + '分钟' + (stageName ? '「' + stageName + '」' : ''), expGained, 'study_recorded');
+                    }
+                } else {
+                    alert('记录失败: ' + (response.data.message || ''));
+                }
+            }).catch(function(error) {
+                alert('记录失败: ' + error.message);
+            });
+        }
+
+        function getStageProgress(planId, stageId) {
+            var plan = currentPlans.find(function(p) { return p.id === planId; });
+            if (!plan || !plan.stages) return 0;
+            var stage = plan.stages.find(function(s) { return s.stageId === stageId; });
+            return stage ? stage.progress : 0;
+        }
+
+        function updateStageProgress(planId, stageId, progress) {
+            axios.put('/api/study-plans/' + planId + '/stages/' + stageId + '/progress', { progress: progress })
+                .then(function(response) {
+                    if (response.data.success) {
+                        selectPlan(planId);
+                    }
+                })
+                .catch(function(error) { alert('更新进度失败'); });
+        }
+
+        function completeStage(planId, stageId) {
+            if (!confirm('确认完成此阶段？完成后将标记为已完成状态。')) return;
+            var duration = parseInt(document.getElementById('record-duration-input')?.value) || 60;
+            axios.put('/api/study-plans/' + planId + '/stages/' + stageId + '/complete', { actualDuration: duration })
+                .then(function(response) {
+                    if (response.data.success) {
+                        var plan = currentPlans.find(function(p) { return p.id === planId; });
+                        var stageName = '';
+                        if (plan && plan.stages) {
+                            var stage = plan.stages.find(function(s) { return s.stageId === stageId; });
+                            if (stage) stageName = stage.name;
+                        }
+                        JellyStudyApp.recordActivity('PLAN_COMPLETE', stageId, stageName || '学习阶段', '完成了学习阶段', { planId: planId, duration: duration });
+                        selectPlan(planId);
+
+                        // Spirit celebration for stage completion
+                        if (window.SpiritNotify) {
+                            SpiritNotify.celebrate('完成阶段「' + (stageName || '学习阶段') + '」🏆', 25, 'stage_completed');
+                        }
+                    } else {
+                        alert('完成阶段失败');
+                    }
+                })
+                .catch(function(error) { alert('操作失败: ' + error.message); });
+        }
+
+        function switchAITab(tab) {
+            document.querySelectorAll('.ai-tab').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelector('.ai-tab[data-tab="' + tab + '"]').classList.add('active');
+            var user = JellyStudyApp.getUser();
+            if (!user || !currentPlanId) return;
+
+            var resultArea = document.getElementById('ai-result-area');
+            resultArea.innerHTML = '<div class="ai-result-box"><div class="content">AI正在分析中...</div></div>';
+
+            var url = '';
+            if (tab === 'recommend') url = '/api/study-plans/' + currentPlanId + '/ai-recommendation?userId=' + user.id;
+            else if (tab === 'path') url = '/api/study-plans/' + currentPlanId + '/ai-study-path?userId=' + user.id;
+            else if (tab === 'weak') url = '/api/study-plans/' + currentPlanId + '/ai-weak-points?userId=' + user.id;
+            else if (tab === 'daily') url = '/api/study-plans/' + currentPlanId + '/ai-daily-plan?userId=' + user.id;
+
+            axios.get(url).then(function(response) {
+                var data = response.data;
+                var content = data.recommendation || data.analysis || data.dailyPlan || data.message || '暂无结果';
+                resultArea.innerHTML = '<div class="ai-result-box"><div class="content">' + escapeHtml(content) + '</div></div>';
+            }).catch(function(error) {
+                resultArea.innerHTML = '<div class="ai-result-box"><div class="content">AI分析暂时不可用: ' + error.message + '</div></div>';
+            });
+        }
+
+        function showCreateForm() {
+            document.getElementById('create-form-overlay').classList.add('show');
+            goToStep(1);
+            document.getElementById('plan-title').value = '';
+            document.getElementById('plan-goal').value = '';
+            document.getElementById('plan-desc').value = '';
+            resetStagesContainer();
+        }
+
+        function hideCreateForm() { document.getElementById('create-form-overlay').classList.remove('show'); }
+
+        function showAICreateForm() {
+            document.getElementById('ai-create-form-overlay').classList.add('show');
+            document.getElementById('ai-generate-result').style.display = 'none';
+            document.getElementById('ai-generate-btn').style.display = '';
+            document.getElementById('ai-confirm-btn').style.display = 'none';
+            aiGeneratedPlan = null;
+        }
+
+        function hideAICreateForm() { document.getElementById('ai-create-form-overlay').classList.remove('show'); }
+
+        function goToStep(step) {
+            if (step === 2) {
+                var title = document.getElementById('plan-title').value.trim();
+                if (!title) { alert('请输入计划标题'); return; }
+            }
+            if (step === 3) { renderPlanPreview(); }
+            document.querySelectorAll('.form-step').forEach(function(s) { s.classList.remove('active'); });
+            document.getElementById('form-step-' + step).classList.add('active');
+            for (var i = 1; i <= 3; i++) {
+                var dot = document.getElementById('step-dot-' + i);
+                dot.className = 'step-dot';
+                if (i < step) dot.classList.add('done');
+                else if (i === step) dot.classList.add('active');
+                if (i < 3) {
+                    var conn = document.getElementById('step-conn-' + i);
+                    conn.className = 'step-connector';
+                    if (i < step) conn.classList.add('done');
+                }
+            }
+        }
+
+        function resetStagesContainer() {
+            document.getElementById('stages-container').innerHTML =
+                buildStageInputHTML(1) + buildStageInputHTML(2) + buildStageInputHTML(3);
+        }
+
+        function buildStageInputHTML(index) {
+            return '<div class="stage-input-row" data-stage-index="' + index + '">' +
+                '<div class="stage-num">' + index + '</div>' +
+                '<div class="stage-input-main">' +
+                    '<input type="text" placeholder="阶段名称（如：基础入门）" class="stage-name-input">' +
+                    '<textarea placeholder="阶段描述（学习目标、核心内容等）" class="stage-desc-input"></textarea>' +
+                    '<input type="number" placeholder="预计时长（小时，可选）" class="stage-hours-input" min="0" step="0.5" style="max-width:180px;">' +
+                    '<div class="tasks-container">' +
+                        '<div style="font-size:12px;color:#999;margin-bottom:4px;">具体任务：</div>' +
+                        '<div class="task-input-row"><input type="text" placeholder="任务1" class="task-input"><button type="button" class="remove-task-btn" onclick="this.parentElement.remove()">×</button></div>' +
+                    '</div>' +
+                    '<button type="button" class="add-task-btn" onclick="addTaskInput(this)">+ 添加任务</button>' +
+                '</div>' +
+                '<button type="button" class="remove-stage-btn" onclick="removeStageRow(this)">删除阶段</button>' +
+            '</div>';
+        }
+
+        function addStageInput() {
+            var container = document.getElementById('stages-container');
+            var count = container.querySelectorAll('.stage-input-row').length + 1;
+            var div = document.createElement('div');
+            div.innerHTML = buildStageInputHTML(count);
+            container.appendChild(div.firstElementChild);
+        }
+
+        function removeStageRow(btn) {
+            var row = btn.closest('.stage-input-row');
+            if (row) row.remove();
+        }
+
+        function addTaskInput(btn) {
+            var tasksContainer = btn.previousElementSibling;
+            var taskRows = tasksContainer.querySelectorAll('.task-input-row');
+            var taskNum = taskRows.length + 1;
+            var row = document.createElement('div');
+            row.className = 'task-input-row';
+            row.innerHTML = '<input type="text" placeholder="任务' + taskNum + '" class="task-input"><button type="button" class="remove-task-btn" onclick="this.parentElement.remove()">×</button>';
+            tasksContainer.appendChild(row);
+        }
+
+        function renderPlanPreview() {
+            var title = document.getElementById('plan-title').value.trim();
+            var goal = document.getElementById('plan-goal').value.trim();
+            var desc = document.getElementById('plan-desc').value.trim();
+            var stageRows = document.querySelectorAll('.stage-input-row');
+            var html = '<h4 style="margin-bottom: 8px;">' + escapeHtml(title) + '</h4>';
+            if (goal) html += '<p style="font-size: 14px; color: #666; margin-bottom: 8px;">目标: ' + escapeHtml(goal) + '</p>';
+            if (desc) html += '<p style="font-size: 13px; color: #999; margin-bottom: 12px;">' + escapeHtml(desc) + '</p>';
+            html += '<p style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">学习阶段:</p>';
+            var stageCount = 0;
+            stageRows.forEach(function(row, index) {
+                var nameInput = row.querySelector('.stage-name-input');
+                var descInput = row.querySelector('.stage-desc-input');
+                var hoursInput = row.querySelector('.stage-hours-input');
+                var taskInputs = row.querySelectorAll('.task-input');
+                var name = nameInput ? nameInput.value.trim() : '';
+                var stageDesc = descInput ? descInput.value.trim() : '';
+                var hours = hoursInput ? hoursInput.value : '';
+                if (name) {
+                    stageCount++;
+                    html += '<div style="margin-bottom: 10px; padding-left: 12px; border-left: 3px solid var(--primary-color);">';
+                    html += '<strong>阶段' + (index + 1) + ': ' + escapeHtml(name) + '</strong>';
+                    if (hours) html += ' <span style="font-size:12px;color:#999;">⏱ ' + hours + '小时</span>';
+                    if (stageDesc) html += '<p style="font-size: 13px; color: #666; margin: 4px 0;">' + escapeHtml(stageDesc) + '</p>';
+                    var tasks = [];
+                    taskInputs.forEach(function(ti) { var v = ti.value.trim(); if (v) tasks.push(v); });
+                    if (tasks.length > 0) {
+                        html += '<div style="font-size:12px;color:#888;margin-top:4px;">任务: ' + tasks.map(function(t) { return escapeHtml(t); }).join('、') + '</div>';
+                    }
+                    html += '</div>';
+                }
+            });
+            if (stageCount === 0) html += '<p style="color: #ff4d4f;">请至少添加一个学习阶段</p>';
+            document.getElementById('plan-preview').innerHTML = html;
+        }
+
+        function handleCreatePlan() {
+            var user = JellyStudyApp.getUser();
+            if (!user) { JellyStudyApp.showLoginModal(); return; }
+            var title = document.getElementById('plan-title').value.trim();
+            var goal = document.getElementById('plan-goal').value.trim();
+            var desc = document.getElementById('plan-desc').value.trim();
+            var stageRows = document.querySelectorAll('.stage-input-row');
+            var stages = [];
+            stageRows.forEach(function(row, index) {
+                var nameInput = row.querySelector('.stage-name-input');
+                var descInput = row.querySelector('.stage-desc-input');
+                var hoursInput = row.querySelector('.stage-hours-input');
+                var taskInputs = row.querySelectorAll('.task-input');
+                var name = nameInput ? nameInput.value.trim() : '';
+                var stageDesc = descInput ? descInput.value.trim() : '';
+                var hours = hoursInput ? parseFloat(hoursInput.value) : null;
+                if (name) {
+                    var tasks = [];
+                    taskInputs.forEach(function(ti) { var v = ti.value.trim(); if (v) tasks.push(v); });
+                    var stage = { name: name, description: stageDesc || goal || '', progress: 0, order: index };
+                    if (tasks.length > 0) stage.tasks = tasks;
+                    if (hours && hours > 0) stage.estimatedHours = hours;
+                    stages.push(stage);
+                }
+            });
+            if (!title) { alert('请输入计划标题'); return; }
+            if (stages.length === 0) { alert('请至少添加一个学习阶段'); return; }
+
+            axios.post('/api/study-plans', {
+                title: title, description: (desc || '') + (goal ? '\n学习目标: ' + goal : ''),
+                userId: user.id, stages: stages
+            }).then(function(response) {
+                if (response.data.success) {
+                    JellyStudyApp.recordActivity('PLAN_CREATE', response.data.plan.id, title, '创建了学习计划: ' + title);
+                    hideCreateForm();
+                    loadPlans();
+                    selectPlan(response.data.plan.id);
+                    // Spirit celebration
+                    if (window.SpiritNotify) {
+                        SpiritNotify.celebrate('创建了新计划「' + title + '」', 30, 'plan_created');
+                    }
+                } else { alert('创建失败: ' + (response.data.message || '未知错误')); }
+            }).catch(function(error) { alert('创建失败: ' + error.message); });
+        }
+
+        function handleAIGenerate() {
+            var subject = document.getElementById('ai-subject').value.trim();
+            var goal = document.getElementById('ai-goal').value.trim();
+            var difficulty = document.getElementById('ai-difficulty').value;
+            if (!subject) { alert('请输入学习科目'); return; }
+
+            document.getElementById('ai-generate-result').style.display = 'block';
+            document.getElementById('ai-generate-content').innerHTML = '<div style="text-align:center;padding:20px;">AI正在生成学习计划，请稍候...</div>';
+            document.getElementById('ai-generate-btn').disabled = true;
+
+            axios.post('/api/ai/generate-plan', { subject: subject, goal: goal, difficulty: difficulty })
+                .then(function(response) {
+                    document.getElementById('ai-generate-btn').disabled = false;
+                    if (response.data.success) {
+                        aiGeneratedPlan = response.data.plan;
+                        var plan = response.data.plan;
+                        var rawText = response.data.text || '';
+                        var html = '';
+                        if (plan && plan.stages && plan.stages.length > 0 && plan.stages[0].name && plan.stages[0].name !== '学习计划') {
+                            html = renderAIPlanReadable(plan, subject);
+                        } else if (rawText) {
+                            html = renderAIPlanFromText(rawText, subject);
+                            aiGeneratedPlan = extractPlanFromText(rawText, subject, goal);
+                        } else {
+                            html = '<div style="color:#ffccc7;">AI未能生成有效的学习计划，请重试</div>';
+                        }
+                        document.getElementById('ai-generate-content').innerHTML = html;
+                        document.getElementById('ai-confirm-btn').style.display = '';
+                    } else {
+                        document.getElementById('ai-generate-content').innerHTML = '<div style="color:#ffccc7;">生成失败: ' + escapeHtml(response.data.message || '') + '</div>';
+                    }
+                })
+                .catch(function(error) {
+                    document.getElementById('ai-generate-btn').disabled = false;
+                    document.getElementById('ai-generate-content').innerHTML = '<div style="color:#ffccc7;">生成失败: ' + escapeHtml(error.message) + '</div>';
+                });
+        }
+
+        function renderAIPlanReadable(plan, subject) {
+            var html = '<div style="margin-bottom:12px;">';
+            html += '<h4 style="font-size:16px;margin-bottom:8px;">📚 ' + escapeHtml(plan.title || subject + '学习计划') + '</h4>';
+            if (plan.description) {
+                html += '<p style="font-size:13px;opacity:0.85;margin-bottom:12px;">' + escapeHtml(plan.description) + '</p>';
+            }
+            html += '</div>';
+
+            if (plan.stages && plan.stages.length > 0) {
+                html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+                plan.stages.forEach(function(stage, idx) {
+                    html += '<div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:12px;">';
+                    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+                    html += '<span style="background:rgba(255,255,255,0.3);width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">' + (idx + 1) + '</span>';
+                    html += '<strong style="font-size:14px;">' + escapeHtml(stage.name || '阶段' + (idx + 1)) + '</strong>';
+                    if (stage.estimatedHours) html += '<span style="font-size:11px;opacity:0.7;">⏱ ' + stage.estimatedHours + 'h</span>';
+                    html += '</div>';
+                    if (stage.description) {
+                        var descLines = stage.description.split('\n');
+                        descLines.forEach(function(line) {
+                            if (line.trim()) html += '<div style="font-size:13px;opacity:0.9;padding-left:32px;line-height:1.6;">' + escapeHtml(line) + '</div>';
+                        });
+                    }
+                    if (stage.tasks && stage.tasks.length > 0) {
+                        html += '<div style="margin-top:6px;padding-left:32px;">';
+                        html += '<div style="font-size:11px;opacity:0.7;margin-bottom:3px;">📋 任务：</div>';
+                        stage.tasks.forEach(function(task) {
+                            html += '<div style="font-size:12px;opacity:0.85;line-height:1.5;">• ' + escapeHtml(task) + '</div>';
+                        });
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+
+            return html;
+        }
+
+        function renderAIPlanFromText(text, subject) {
+            var html = '<div style="margin-bottom:12px;">';
+            html += '<h4 style="font-size:16px;margin-bottom:8px;">📚 ' + escapeHtml(subject + '学习计划') + '</h4>';
+            html += '</div>';
+
+            var stages = parseTextToStages(text);
+            if (stages.length > 0) {
+                html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+                stages.forEach(function(stage, idx) {
+                    html += '<div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:12px;">';
+                    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+                    html += '<span style="background:rgba(255,255,255,0.3);width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">' + (idx + 1) + '</span>';
+                    html += '<strong style="font-size:14px;">' + escapeHtml(stage.name) + '</strong>';
+                    html += '</div>';
+                    if (stage.description) {
+                        var lines = stage.description.split('\n');
+                        lines.forEach(function(line) {
+                            if (line.trim()) html += '<div style="font-size:13px;opacity:0.9;padding-left:32px;line-height:1.6;">' + escapeHtml(line) + '</div>';
+                        });
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+            } else {
+                var paragraphs = text.split(/\n{2,}/);
+                paragraphs.forEach(function(p) {
+                    if (p.trim()) html += '<div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:12px;margin-bottom:8px;font-size:13px;line-height:1.7;opacity:0.9;">' + escapeHtml(p.trim()) + '</div>';
+                });
+            }
+
+            return html;
+        }
+
+        function parseTextToStages(text) {
+            var stages = [];
+            var lines = text.split('\n');
+            var stageRegex = /^\s*(\d+)[.、)）]\s*(.+)/;
+            var sectionRegex = /^\s*(阶段\d+|第[一二三四五六七八九十\d]+阶段|Stage\s*\d+)\s*[:：]?\s*(.*)/i;
+            var currentStage = null;
+
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                var sectionMatch = line.match(sectionRegex);
+                var stageMatch = line.match(stageRegex);
+
+                if (sectionMatch) {
+                    if (currentStage) stages.push(currentStage);
+                    currentStage = { name: sectionMatch[2] || sectionMatch[1], description: '' };
+                } else if (stageMatch && stageMatch[1] <= 10) {
+                    if (currentStage) stages.push(currentStage);
+                    currentStage = { name: stageMatch[2], description: '' };
+                } else if (currentStage) {
+                    if (currentStage.description) currentStage.description += '\n';
+                    currentStage.description += line.trim();
+                }
+            }
+            if (currentStage) stages.push(currentStage);
+            return stages;
+        }
+
+        function extractPlanFromText(text, subject, goal) {
+            var stages = parseTextToStages(text);
+            var planStages = [];
+            stages.forEach(function(s, idx) {
+                planStages.push({
+                    name: s.name,
+                    description: s.description || '',
+                    progress: 0,
+                    order: idx
+                });
+            });
+            if (planStages.length === 0) {
+                planStages.push({ name: '学习阶段', description: text.substring(0, 500), progress: 0, order: 0 });
+            }
+            return {
+                title: subject + '学习计划',
+                description: goal ? '学习目标: ' + goal : 'AI智能生成的学习计划',
+                stages: planStages
+            };
+        }
+
+        function confirmAIPlan() {
+            if (!aiGeneratedPlan) { alert('请先生成计划'); return; }
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+
+            aiGeneratedPlan.userId = user.id;
+            axios.post('/api/study-plans', aiGeneratedPlan)
+                .then(function(response) {
+                    if (response.data.success) {
+                        JellyStudyApp.recordActivity('PLAN_CREATE', response.data.plan.id, aiGeneratedPlan.title || 'AI生成计划', '通过AI智能生成了学习计划');
+                        hideAICreateForm();
+                        loadPlans();
+                        selectPlan(response.data.plan.id);
+                        // Spirit celebration
+                        if (window.SpiritNotify) {
+                            SpiritNotify.celebrate('🤖 AI生成了新计划「' + (aiGeneratedPlan.title || '学习计划') + '」', 30, 'plan_created');
+                        }
+                    } else { alert('创建失败: ' + (response.data.message || '')); }
+                })
+                .catch(function(error) { alert('创建失败: ' + error.message); });
+        }
+
+        function deleteCurrentPlan() {
+            if (!currentPlanId) return;
+            if (!confirm('确定要删除这个学习计划吗？此操作不可恢复。')) return;
+            axios.delete('/api/study-plans/' + currentPlanId)
+                .then(function(response) {
+                    if (response.data.success) {
+                        currentPlanId = null;
+                        document.getElementById('plan-detail').style.display = 'none';
+                        document.getElementById('plan-detail-empty').style.display = '';
+                        loadPlans();
+                    }
+                })
+                .catch(function(error) { alert('删除失败: ' + error.message); });
+        }
+
+        function calculateOverallProgress(plan) {
+            if (!plan.stages || plan.stages.length === 0) return 0;
+            var total = 0;
+            plan.stages.forEach(function(s) { total += (s.progress || 0); });
+            return Math.round(total / plan.stages.length);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function switchMainTab(tab) {
+            document.querySelectorAll('.main-tab').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelector('.main-tab[data-tab="' + tab + '"]').classList.add('active');
+            if (tab === 'plans') {
+                document.getElementById('plans-view').style.display = '';
+                document.getElementById('tasks-view').classList.remove('active');
+            } else {
+                document.getElementById('plans-view').style.display = 'none';
+                document.getElementById('tasks-view').classList.add('active');
+                loadTaskBoard();
+            }
+        }
+
+        function formatDate(dateStr) {
+            var d = new Date(dateStr + 'T00:00:00');
+            var weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+            return (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + weekDays[d.getDay()];
+        }
+
+        function changeTaskDate(offset) {
+            if (offset === 0) {
+                currentTaskDate = new Date().toISOString().split('T')[0];
+            } else {
+                var d = new Date(currentTaskDate + 'T00:00:00');
+                d.setDate(d.getDate() + offset);
+                currentTaskDate = d.toISOString().split('T')[0];
+            }
+            loadTaskBoard();
+        }
+
+        function loadTaskBoard() {
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+            document.getElementById('task-current-date').textContent = formatDate(currentTaskDate);
+            axios.get('/api/study-plans/daily-tasks?userId=' + user.id + '&date=' + currentTaskDate)
+                .then(function(response) {
+                    if (response.data.success) {
+                        currentTaskBoard = response.data.taskBoard;
+                        renderTaskBoard();
+                    }
+                })
+                .catch(function() {
+                    currentTaskBoard = null;
+                    renderTaskBoard();
+                });
+        }
+
+        function renderTaskBoard() {
+            var tasks = (currentTaskBoard && currentTaskBoard.tasks) ? currentTaskBoard.tasks : [];
+            var container = document.getElementById('task-board-list');
+            var completed = 0;
+            var html = '';
+
+            if (tasks.length === 0) {
+                html = '<div style="padding:40px;text-align:center;color:#999;">暂无任务，添加一个新任务开始今天的计划吧！</div>';
+            } else {
+                tasks.forEach(function(task, index) {
+                    var checkedClass = task.completed ? ' checked' : '';
+                    var completedClass = task.completed ? ' completed' : '';
+                    var checkIcon = task.completed ? '✓' : '';
+                    var sourceTag = '';
+                    if (task.planId) sourceTag = '<span class="task-source">来自计划</span>';
+                    html += '<div class="task-item' + completedClass + '">';
+                    html += '<div class="task-checkbox' + checkedClass + '" onclick="toggleTask(' + index + ')">' + checkIcon + '</div>';
+                    html += '<div class="task-content">' + escapeHtml(task.content) + '</div>';
+                    html += sourceTag;
+                    html += '<button class="task-delete-btn" onclick="deleteTask(' + index + ')">×</button>';
+                    html += '</div>';
+                    if (task.completed) completed++;
+                });
+            }
+            container.innerHTML = html;
+
+            var total = tasks.length;
+            document.getElementById('task-board-stats').innerHTML =
+                '<span>📋 总计: ' + total + '</span>' +
+                '<span style="color:#52c41a;">✅ 完成: ' + completed + '</span>' +
+                '<span style="color:#fa8c16;">⏳ 待办: ' + (total - completed) + '</span>' +
+                (total > 0 ? '<span>📊 完成率: ' + Math.round(completed / total * 100) + '%</span>' : '');
+        }
+
+        function addDailyTask() {
+            var input = document.getElementById('new-task-input');
+            var content = input.value.trim();
+            if (!content) return;
+
+            var tasks = (currentTaskBoard && currentTaskBoard.tasks) ? currentTaskBoard.tasks : [];
+            tasks.push({ content: content, completed: false, order: tasks.length });
+            saveTaskBoard(tasks);
+            input.value = '';
+        }
+
+        function toggleTask(index) {
+            var tasks = (currentTaskBoard && currentTaskBoard.tasks) ? currentTaskBoard.tasks : [];
+            if (index >= 0 && index < tasks.length) {
+                tasks[index].completed = !tasks[index].completed;
+                saveTaskBoard(tasks);
+            }
+        }
+
+        function deleteTask(index) {
+            var tasks = (currentTaskBoard && currentTaskBoard.tasks) ? currentTaskBoard.tasks : [];
+            if (index >= 0 && index < tasks.length) {
+                tasks.splice(index, 1);
+                tasks.forEach(function(t, i) { t.order = i; });
+                saveTaskBoard(tasks);
+            }
+        }
+
+        function saveTaskBoard(tasks) {
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+            var board = {
+                userId: user.id,
+                date: currentTaskDate,
+                tasks: tasks
+            };
+            if (currentTaskBoard && currentTaskBoard.id) {
+                board.id = currentTaskBoard.id;
+            }
+            axios.post('/api/study-plans/daily-tasks', board)
+                .then(function(response) {
+                    if (response.data.success) {
+                        currentTaskBoard = response.data.taskBoard;
+                        renderTaskBoard();
+
+                        // Spirit reaction: check if a task was just completed
+                        var newTasks = response.data.taskBoard.tasks || [];
+                        var oldTasks = (currentTaskBoard && currentTaskBoard.tasks) ? currentTaskBoard.tasks : [];
+                        newTasks.forEach(function(t, i) {
+                            var oldT = oldTasks[i];
+                            if (t.completed && oldT && !oldT.completed && window.SpiritNotify) {
+                                SpiritNotify.celebrate('完成任务「' + (t.content || '').substring(0, 12) + '」', 8, 'task_completed');
+                            }
+                        });
+                        // Also feed on any save (streak)
+                        if (window.SpiritNotify) SpiritNotify.feed('daily_task', 2);
+                    }
+                })
+                .catch(function(error) { alert('保存失败: ' + error.message); });
+        }
+
+        function importPlanTasks() {
+            var user = JellyStudyApp.getUser();
+            if (!user) return;
+            var html = '';
+            if (currentPlans.length === 0) {
+                html = '<p style="color:#999;text-align:center;padding:20px;">暂无学习计划，请先创建计划</p>';
+            } else {
+                currentPlans.forEach(function(plan) {
+                    html += '<div style="margin-bottom:12px;">';
+                    html += '<h4 style="font-size:14px;margin-bottom:6px;">📚 ' + escapeHtml(plan.title) + '</h4>';
+                    if (plan.stages) {
+                        plan.stages.forEach(function(stage) {
+                            if (stage.tasks && stage.tasks.length > 0) {
+                                html += '<div style="font-size:12px;color:#999;margin-bottom:4px;padding-left:8px;">阶段: ' + escapeHtml(stage.name) + '</div>';
+                                stage.tasks.forEach(function(task) {
+                                    html += '<label style="display:flex;align-items:center;gap:8px;padding:4px 8px 4px 16px;cursor:pointer;">';
+                                    html += '<input type="checkbox" class="import-task-check" data-task="' + escapeHtml(task) + '" data-plan-id="' + plan.id + '" data-stage-id="' + (stage.stageId || '') + '">';
+                                    html += '<span style="font-size:13px;">' + escapeHtml(task) + '</span>';
+                                    html += '</label>';
+                                });
+                            }
+                        });
+                    }
+                    html += '</div>';
+                });
+            }
+            document.getElementById('import-tasks-list').innerHTML = html;
+            document.getElementById('import-tasks-overlay').classList.add('show');
+        }
+
+        function hideImportTasks() {
+            document.getElementById('import-tasks-overlay').classList.remove('show');
+        }
+
+        function confirmImportTasks() {
+            var checks = document.querySelectorAll('.import-task-check:checked');
+            if (checks.length === 0) { alert('请选择要导入的任务'); return; }
+            var tasks = (currentTaskBoard && currentTaskBoard.tasks) ? currentTaskBoard.tasks.slice() : [];
+            checks.forEach(function(ch) {
+                tasks.push({
+                    content: ch.getAttribute('data-task'),
+                    completed: false,
+                    planId: ch.getAttribute('data-plan-id'),
+                    stageId: ch.getAttribute('data-stage-id'),
+                    order: tasks.length
+                });
+            });
+            saveTaskBoard(tasks);
+            hideImportTasks();
+        }
+
+        function editPlanStages() {
+            if (!currentPlanId) return;
+            var plan = currentPlans.find(function(p) { return p.id === currentPlanId; });
+            if (!plan) return;
+
+            var container = document.getElementById('edit-stages-container');
+            var html = '';
+            var stages = plan.stages || [];
+            stages.forEach(function(stage, index) {
+                html += buildEditStageHTML(stage, index);
+            });
+            if (stages.length === 0) {
+                html += buildEditStageHTML(null, 0);
+            }
+            container.innerHTML = html;
+            document.getElementById('edit-stages-overlay').classList.add('show');
+        }
+
+        function buildEditStageHTML(stage, index) {
+            var name = stage ? (stage.name || '') : '';
+            var desc = stage ? (stage.description || '') : '';
+            var hours = stage && stage.estimatedHours ? stage.estimatedHours : '';
+            var stageId = stage ? (stage.stageId || '') : '';
+            var progress = stage ? (stage.progress || 0) : 0;
+            var status = stage ? (stage.status || 'NOT_STARTED') : 'NOT_STARTED';
+            var tasks = (stage && stage.tasks) ? stage.tasks : [];
+
+            var html = '<div class="stage-input-row" data-stage-index="' + index + '" data-stage-id="' + stageId + '" data-progress="' + progress + '" data-status="' + status + '">';
+            html += '<div class="stage-num">' + (index + 1) + '</div>';
+            html += '<div class="stage-input-main">';
+            html += '<input type="text" placeholder="阶段名称" class="stage-name-input" value="' + escapeHtml(name) + '">';
+            html += '<textarea placeholder="阶段描述" class="stage-desc-input">' + escapeHtml(desc) + '</textarea>';
+            html += '<input type="number" placeholder="预计时长（小时）" class="stage-hours-input" min="0" step="0.5" style="max-width:180px;" value="' + hours + '">';
+            html += '<div class="tasks-container">';
+            html += '<div style="font-size:12px;color:#999;margin-bottom:4px;">具体任务：</div>';
+            tasks.forEach(function(task, ti) {
+                html += '<div class="task-input-row"><input type="text" placeholder="任务' + (ti + 1) + '" class="task-input" value="' + escapeHtml(task) + '"><button type="button" class="remove-task-btn" onclick="this.parentElement.remove()">×</button></div>';
+            });
+            html += '</div>';
+            html += '<button type="button" class="add-task-btn" onclick="addTaskInput(this)">+ 添加任务</button>';
+            html += '</div>';
+            html += '<button type="button" class="remove-stage-btn" onclick="removeStageRow(this)">删除阶段</button>';
+            html += '</div>';
+            return html;
+        }
+
+        function addEditStageInput() {
+            var container = document.getElementById('edit-stages-container');
+            var count = container.querySelectorAll('.stage-input-row').length;
+            var div = document.createElement('div');
+            div.innerHTML = buildEditStageHTML(null, count);
+            container.appendChild(div.firstElementChild);
+        }
+
+        function hideEditStages() {
+            document.getElementById('edit-stages-overlay').classList.remove('show');
+        }
+
+        function saveEditStages() {
+            if (!currentPlanId) return;
+            var rows = document.querySelectorAll('#edit-stages-container .stage-input-row');
+            var stages = [];
+            rows.forEach(function(row, index) {
+                var nameInput = row.querySelector('.stage-name-input');
+                var descInput = row.querySelector('.stage-desc-input');
+                var hoursInput = row.querySelector('.stage-hours-input');
+                var taskInputs = row.querySelectorAll('.task-input');
+                var name = nameInput ? nameInput.value.trim() : '';
+                var stageDesc = descInput ? descInput.value.trim() : '';
+                var hours = hoursInput ? parseFloat(hoursInput.value) : null;
+                if (!name) return;
+
+                var tasks = [];
+                taskInputs.forEach(function(ti) { var v = ti.value.trim(); if (v) tasks.push(v); });
+
+                var stage = {
+                    stageId: row.getAttribute('data-stage-id') || '',
+                    name: name,
+                    description: stageDesc,
+                    progress: parseInt(row.getAttribute('data-progress')) || 0,
+                    status: row.getAttribute('data-status') || 'NOT_STARTED',
+                    order: index
+                };
+                if (tasks.length > 0) stage.tasks = tasks;
+                if (hours && hours > 0) stage.estimatedHours = hours;
+                stages.push(stage);
+            });
+
+            if (stages.length === 0) { alert('请至少保留一个学习阶段'); return; }
+
+            axios.put('/api/study-plans/' + currentPlanId + '/stages', { stages: stages })
+                .then(function(response) {
+                    if (response.data.success) {
+                        hideEditStages();
+                        selectPlan(currentPlanId);
+                        loadPlans();
+                    } else {
+                        alert('保存失败: ' + (response.data.message || ''));
+                    }
+                })
+                .catch(function(error) { alert('保存失败: ' + error.message); });
+        }
+
+        afterLogin = function(user) { checkLoginState(); };
+        afterLogout = function() { checkLoginState(); };
+        checkLoginState();
+    </script>
+<div th:replace="fragments :: spirit-widget"></div>
+</body>
+</html>

@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head('AI智能中心 - JellyStudy', ~{::extra-css})">
+    <th:block th:fragment="extra-css">
+    <style>
+        .container {
+            max-width: 1400px;
+        }
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card-full {
+            grid-column: 1 / -1;
+        }
+        .form-group textarea {
+            min-height: 100px;
+        }
+        .result-box {
+            margin-top: 16px;
+            padding: 16px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            min-height: 60px;
+        }
+        .result-box .result-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        .result-box .result-content {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #555;
+            white-space: pre-wrap;
+        }
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: #666;
+            padding: 20px;
+        }
+        .loading .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e0e0e0;
+            border-top-color: #0f88eb;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            background-color: #e6f7ff;
+            color: #0f88eb;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .difficulty-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .difficulty-easy { background-color: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .difficulty-medium { background-color: #fff7e6; color: #fa8c16; border: 1px solid #ffd591; }
+        .difficulty-hard { background-color: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-item {
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-item .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0f88eb;
+        }
+        .stat-item .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            padding: 16px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+        .chat-message {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-message.user { align-items: flex-end; }
+        .chat-message.ai { align-items: flex-start; }
+        .chat-message .bubble {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .chat-message.user .bubble {
+            background-color: #0f88eb;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-message.ai .bubble {
+            background-color: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-input-container {
+            display: flex;
+            gap: 12px;
+        }
+        .chat-input-container textarea {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            resize: none;
+            min-height: 44px;
+        }
+        .chat-input-container textarea:focus {
+            outline: none;
+            border-color: #0f88eb;
+        }
+        .tab-bar {
+            display: flex;
+            gap: 0;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #e8e8e8;
+        }
+        .tab-bar .tab {
+            padding: 8px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .tab-bar .tab:hover { color: #0f88eb; }
+        .tab-bar .tab.active {
+            color: #0f88eb;
+            font-weight: 600;
+            border-bottom-color: #0f88eb;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .question-preview {
+            padding: 12px;
+            background-color: #f5f5f5;
+            border-radius: 6px;
+            margin-top: 12px;
+            font-size: 14px;
+            color: #666;
+        }
+        .analysis-section {
+            margin-top: 16px;
+            padding: 16px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e8e8e8;
+        }
+        .analysis-section h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .analysis-section p {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #555;
+            margin: 8px 0;
+        }
+        .summary-type-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .summary-type-card {
+            padding: 16px;
+            border: 2px solid #e8e8e8;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .summary-type-card:hover {
+            border-color: #0f88eb;
+            background-color: #f0f7ff;
+        }
+        .summary-type-card.selected {
+            border-color: #0f88eb;
+            background-color: #e6f7ff;
+        }
+        .summary-type-card .icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .summary-type-card .label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        .summary-type-card .desc {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .error-message {
+            color: #ff4d4f;
+            font-size: 14px;
+            padding: 8px 12px;
+            background-color: #fff2f0;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+        .input-mode-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .input-mode-toggle button {
+            padding: 6px 16px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
+            color: #666;
+            transition: all 0.2s;
+        }
+        .input-mode-toggle button.active {
+            background: #0f88eb;
+            color: white;
+            border-color: #0f88eb;
+        }
+        .search-select-wrapper {
+            position: relative;
+        }
+        .search-select-input {
+            width: 100%;
+            padding: 10px 14px;
+            padding-right: 36px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .search-select-input:focus {
+            outline: none;
+            border-color: #0f88eb;
+            box-shadow: 0 0 0 2px rgba(15, 136, 235, 0.1);
+        }
+        .search-select-input::placeholder {
+            color: #b0b0b0;
+        }
+        .search-select-arrow {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #999;
+            font-size: 12px;
+        }
+        .search-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 260px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #d0d0d0;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .search-select-dropdown.show {
+            display: block;
+        }
+        .search-select-option {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #333;
+            border-bottom: 1px solid #f5f5f5;
+            transition: background 0.15s;
+        }
+        .search-select-option:hover {
+            background-color: #e6f7ff;
+        }
+        .search-select-option.selected {
+            background-color: #f0f7ff;
+            color: #0f88eb;
+            font-weight: 500;
+        }
+        .search-select-option .option-title {
+            font-weight: 500;
+        }
+        .search-select-option .option-meta {
+            font-size: 12px;
+            color: #999;
+            margin-top: 2px;
+        }
+        .search-select-option .highlight {
+            background-color: #fff3cd;
+            padding: 0 1px;
+            border-radius: 2px;
+        }
+        .search-select-empty {
+            padding: 20px;
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+        }
+    </style>
+    </th:block>
+</head>
+<body>
+    <div th:replace="fragments :: header('ai')"></div>
+
+    <div class="container">
+        <h1 class="page-title">AI智能中心</h1>
+
+        <div class="grid-layout">
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📝</span>
+                    AI问题分析
+                </div>
+                <div class="card-body">
+                    <div class="input-mode-toggle">
+                        <button class="active" onclick="switchInputMode('select')">选择已有问题</button>
+                        <button onclick="switchInputMode('manual')">手动输入问题</button>
+                    </div>
+
+                    <div id="selectMode">
+                        <div class="form-group">
+                            <label>选择问题</label>
+                            <div class="search-select-wrapper" id="questionSelectWrapper">
+                                <input type="text" class="search-select-input" id="questionSearchInput" placeholder="🔍 搜索并选择问题..." autocomplete="off">
+                                <span class="search-select-arrow">▼</span>
+                                <div class="search-select-dropdown" id="questionDropdown"></div>
+                            </div>
+                            <input type="hidden" id="selectedQuestionId" value="">
+                            <div id="questionPreview" class="question-preview" style="display:none;"></div>
+                        </div>
+                    </div>
+
+                    <div id="manualMode" style="display:none;">
+                        <div class="form-group">
+                            <label>问题标题</label>
+                            <input type="text" id="manualTitle" placeholder="请输入问题标题">
+                        </div>
+                        <div class="form-group">
+                            <label>问题内容</label>
+                            <textarea id="manualContent" placeholder="请输入问题详细内容" style="min-height:80px;"></textarea>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeQuestion()">🔍 开始AI分析</button>
+                    <div id="analyzeResult" style="display:none;"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📊</span>
+                    AI数据库总结
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid" id="summaryStats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="statQuestions">-</div>
+                            <div class="stat-label">问题总数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statAnswers">-</div>
+                            <div class="stat-label">回答总数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statComments">-</div>
+                            <div class="stat-label">评论总数</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-type-cards">
+                        <div class="summary-type-card selected" onclick="selectSummaryType(this, 'questions')">
+                            <div class="icon">📋</div>
+                            <div class="label">问题分析</div>
+                            <div class="desc">分析问题分布与趋势</div>
+                        </div>
+                        <div class="summary-type-card" onclick="selectSummaryType(this, 'answers')">
+                            <div class="icon">💡</div>
+                            <div class="label">回答质量</div>
+                            <div class="desc">评估回答质量与评分</div>
+                        </div>
+                        <div class="summary-type-card" onclick="selectSummaryType(this, 'comments')">
+                            <div class="icon">💬</div>
+                            <div class="label">评论互动</div>
+                            <div class="desc">分析评论活跃度</div>
+                        </div>
+                        <div class="summary-type-card" onclick="selectSummaryType(this, 'full')">
+                            <div class="icon">📈</div>
+                            <div class="label">全面报告</div>
+                            <div class="desc">综合数据分析报告</div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" id="summaryBtn" onclick="generateSummary()">🤖 AI生成总结</button>
+                    <div id="summaryResult" style="display:none;"></div>
+                </div>
+            </div>
+
+            <div class="card card-full">
+                <div class="card-header">
+                    <span class="icon">💬</span>
+                    AI对话助手
+                </div>
+                <div class="card-body">
+                    <div class="chat-container" id="chatContainer">
+                        <div class="chat-message ai">
+                            <div class="bubble">您好！我是JellyStudy AI智能助手，可以帮您分析问题、总结知识点、评估回答质量等。有什么可以帮助您的吗？</div>
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                        <textarea id="chatInput" placeholder="输入您的问题..." rows="1" onkeydown="handleChatKeyDown(event)"></textarea>
+                        <button class="btn btn-primary" onclick="sendChatMessage()">发送</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentQuestion = null;
+        let allQuestions = [];
+        let selectedSummaryType = 'questions';
+
+        window.onload = function() {
+            loadQuestions();
+            loadStats();
+            initQuestionSearch();
+        };
+
+        function initQuestionSearch() {
+            const input = document.getElementById('questionSearchInput');
+            const dropdown = document.getElementById('questionDropdown');
+
+            input.addEventListener('focus', function() {
+                renderQuestionDropdown(input.value);
+                dropdown.classList.add('show');
+            });
+
+            input.addEventListener('input', function() {
+                renderQuestionDropdown(input.value);
+                dropdown.classList.add('show');
+            });
+
+            document.addEventListener('click', function(e) {
+                const wrapper = document.getElementById('questionSelectWrapper');
+                if (!wrapper.contains(e.target)) {
+                    dropdown.classList.remove('show');
+                }
+            });
+        }
+
+        function renderQuestionDropdown(keyword) {
+            const dropdown = document.getElementById('questionDropdown');
+            const selectedId = document.getElementById('selectedQuestionId').value;
+            let filtered = allQuestions;
+
+            if (keyword && keyword.trim()) {
+                const lowerKeyword = keyword.toLowerCase();
+                filtered = allQuestions.filter(q =>
+                    (q.title && q.title.toLowerCase().includes(lowerKeyword)) ||
+                    (q.content && q.content.toLowerCase().includes(lowerKeyword)) ||
+                    (q.author && q.author.toLowerCase().includes(lowerKeyword))
+                );
+            }
+
+            if (filtered.length === 0) {
+                dropdown.innerHTML = '<div class="search-select-empty">未找到匹配的问题</div>';
+                return;
+            }
+
+            dropdown.innerHTML = filtered.map(q => {
+                let titleHtml = escapeHtml(q.title || '');
+                if (keyword && keyword.trim()) {
+                    titleHtml = highlightMatch(q.title || '', keyword);
+                }
+                const isSelected = q.id === selectedId;
+                return `<div class="search-select-option ${isSelected ? 'selected' : ''}" onclick="selectQuestion('${q.id}')">
+                    <div class="option-title">${titleHtml}</div>
+                    <div class="option-meta">${escapeHtml(q.author || '')} · ${q.answerCount || 0}个回答${q.difficulty ? ' · ' + escapeHtml(q.difficulty) : ''}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function highlightMatch(text, keyword) {
+            if (!keyword || !keyword.trim()) return escapeHtml(text);
+            const escaped = escapeHtml(text);
+            const escapedKeyword = escapeHtml(keyword.trim());
+            const regex = new RegExp(`(${escapedKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return escaped.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        function selectQuestion(questionId) {
+            const question = allQuestions.find(q => q.id === questionId);
+            if (!question) return;
+
+            currentQuestion = question;
+            document.getElementById('selectedQuestionId').value = questionId;
+            document.getElementById('questionSearchInput').value = question.title;
+            document.getElementById('questionDropdown').classList.remove('show');
+
+            const preview = document.getElementById('questionPreview');
+            preview.style.display = 'block';
+            preview.innerHTML = `<strong>问题：</strong>${escapeHtml(question.title)}<br><strong>内容：</strong>${escapeHtml(question.content || '')}`;
+        }
+
+        function switchInputMode(mode) {
+            const buttons = document.querySelectorAll('.input-mode-toggle button');
+            buttons.forEach(b => b.classList.remove('active'));
+            if (mode === 'select') {
+                buttons[0].classList.add('active');
+                document.getElementById('selectMode').style.display = 'block';
+                document.getElementById('manualMode').style.display = 'none';
+            } else {
+                buttons[1].classList.add('active');
+                document.getElementById('selectMode').style.display = 'none';
+                document.getElementById('manualMode').style.display = 'block';
+            }
+        }
+
+        function selectSummaryType(el, type) {
+            document.querySelectorAll('.summary-type-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedSummaryType = type;
+        }
+
+        async function loadQuestions() {
+            try {
+                const response = await axios.get(`${API_BASE}/questions`);
+                allQuestions = response.data;
+            } catch (error) {
+                console.error('加载问题失败:', error);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await axios.get(`${API_BASE}/questions/stats`);
+                document.getElementById('statQuestions').textContent = response.data.totalQuestions || 0;
+                document.getElementById('statAnswers').textContent = response.data.totalAnswers || 0;
+                document.getElementById('statComments').textContent = response.data.totalComments || 0;
+            } catch (error) {
+                console.error('加载统计数据失败:', error);
+            }
+        }
+
+        async function analyzeQuestion() {
+            const selectMode = document.getElementById('selectMode').style.display !== 'none';
+            let questionContent = '';
+            let questionId = '';
+
+            if (selectMode) {
+                if (!currentQuestion) {
+                    alert('请先选择一个问题');
+                    return;
+                }
+                questionContent = currentQuestion.title + '\n' + (currentQuestion.content || '');
+                questionId = currentQuestion.id;
+            } else {
+                const title = document.getElementById('manualTitle').value.trim();
+                const content = document.getElementById('manualContent').value.trim();
+                if (!title && !content) {
+                    alert('请输入问题标题或内容');
+                    return;
+                }
+                questionContent = (title ? title + '\n' : '') + content;
+            }
+
+            const btn = document.getElementById('analyzeBtn');
+            const resultDiv = document.getElementById('analyzeResult');
+
+            btn.disabled = true;
+            btn.textContent = '分析中...';
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>AI正在深度分析问题，请稍候...</div>';
+
+            try {
+                const response = await axios.post(`${API_BASE}/evaluation/ai-analyze-question`, {
+                    questionContent: questionContent,
+                    questionId: questionId
+                }, { timeout: 120000 });
+
+                const data = response.data;
+                if (!data.success) {
+                    resultDiv.innerHTML = `<div class="error-message">分析失败: ${data.message}</div>`;
+                    return;
+                }
+
+                let html = '';
+
+                if (data.knowledgePoints && data.knowledgePoints.length > 0) {
+                    html += `<div class="analysis-section">
+                        <h4>📚 知识点识别</h4>
+                        <div class="tags">`;
+                    data.knowledgePoints.forEach(kp => {
+                        html += `<span class="tag">${kp}</span>`;
+                    });
+                    html += `</div></div>`;
+                }
+
+                if (data.difficulty) {
+                    const diffClass = data.difficulty === '简单' ? 'difficulty-easy' :
+                                     data.difficulty === '中等' ? 'difficulty-medium' : 'difficulty-hard';
+                    html += `<div class="analysis-section">
+                        <h4>📊 难度评估</h4>
+                        <span class="difficulty-tag ${diffClass}">${data.difficulty}</span>
+                    </div>`;
+                }
+
+                if (data.analysis) {
+                    html += `<div class="analysis-section">
+                        <h4>🤖 AI深度分析</h4>
+                        <div class="result-content">${data.analysis}</div>
+                    </div>`;
+                }
+
+                resultDiv.innerHTML = html || '<div class="error-message">未获取到分析结果</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">分析失败: ${error.response?.data?.message || error.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 开始AI分析';
+            }
+        }
+
+        async function generateSummary() {
+            const btn = document.getElementById('summaryBtn');
+            const resultDiv = document.getElementById('summaryResult');
+
+            btn.disabled = true;
+            btn.textContent = 'AI生成中...';
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>AI正在分析数据并生成报告，请稍候...</div>';
+
+            try {
+                const response = await axios.post(`${API_BASE}/evaluation/ai-database-summary`, {
+                    type: selectedSummaryType
+                }, { timeout: 120000 });
+
+                const data = response.data;
+                if (!data.success) {
+                    resultDiv.innerHTML = `<div class="error-message">生成失败: ${data.message}</div>`;
+                    return;
+                }
+
+                const typeLabels = {
+                    questions: '问题分析报告',
+                    answers: '回答质量报告',
+                    comments: '评论互动报告',
+                    full: '全面数据分析报告'
+                };
+
+                let html = `<div class="analysis-section">
+                    <h4>📊 ${typeLabels[data.type] || 'AI总结报告'}</h4>
+                    <div class="result-content">${data.summary}</div>
+                </div>`;
+
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error-message">生成总结失败: ${error.response?.data?.message || error.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🤖 AI生成总结';
+            }
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const chatContainer = document.getElementById('chatContainer');
+
+            const userMsg = document.createElement('div');
+            userMsg.className = 'chat-message user';
+            userMsg.innerHTML = `<div class="bubble">${escapeHtml(message)}</div>`;
+            chatContainer.appendChild(userMsg);
+
+            input.value = '';
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            const loadingMsg = document.createElement('div');
+            loadingMsg.className = 'chat-message ai';
+            loadingMsg.id = 'loadingMsg';
+            loadingMsg.innerHTML = `<div class="bubble"><div class="loading"><div class="spinner"></div>AI正在思考...</div></div>`;
+            chatContainer.appendChild(loadingMsg);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            try {
+                const response = await axios.post(`${API_BASE}/evaluation/chat`, {
+                    message: message
+                }, { timeout: 120000 });
+
+                document.getElementById('loadingMsg').remove();
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'chat-message ai';
+                aiMsg.innerHTML = `<div class="bubble">${escapeHtml(response.data.response)}</div>`;
+                chatContainer.appendChild(aiMsg);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            } catch (error) {
+                document.getElementById('loadingMsg')?.remove();
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'chat-message ai';
+                errorMsg.innerHTML = `<div class="bubble error-message">抱歉，AI暂时无法回答您的问题。请稍后再试。</div>`;
+                chatContainer.appendChild(errorMsg);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+
+        function handleChatKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendChatMessage();
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+
+    <div th:replace="fragments :: footer"></div>
+<div th:replace="fragments :: spirit-widget"></div>
+</body>
+</html>
