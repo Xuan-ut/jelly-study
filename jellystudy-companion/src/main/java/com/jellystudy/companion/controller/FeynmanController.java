@@ -70,6 +70,21 @@ public class FeynmanController {
         return Result.success(dto);
     }
 
+    /** 主动结束教学会话，返回教学总结 */
+    @PostMapping("/end")
+    public Result<UnderstandingAssessmentDTO> endSession(@RequestBody EndRequest request) {
+        FeynmanService.AssessmentResult result = feynmanService.endSession(request.getSessionId());
+        UnderstandingAssessmentDTO dto = new UnderstandingAssessmentDTO();
+        dto.setSessionId(result.getSessionId());
+        dto.setKnowledgeId(result.getKnowledgeId());
+        dto.setOverallScore(result.getOverallScore());
+        dto.setMissingPoints(result.getMissingPoints());
+        dto.setMisconceptions(result.getMisconceptions());
+        dto.setRecommendedReview(result.getRecommendedReview());
+        dto.setSuggestedNextStep(result.getSuggestedNextStep());
+        return Result.success(dto);
+    }
+
     @Data
     public static class StartRequest {
         private Long userId;
@@ -80,5 +95,10 @@ public class FeynmanController {
     public static class RespondRequest {
         private String sessionId;
         private String userExplanation;
+    }
+
+    @Data
+    public static class EndRequest {
+        private String sessionId;
     }
 }

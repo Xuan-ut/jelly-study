@@ -64,7 +64,7 @@ public class AIClient {
                 }
             }
             log.warn("AI返回格式异常: {}", response.getBody());
-            return "抱歉，我现在有点迷糊...稍等一下再试试好吗？";
+            return "我好像走神了一下...你能再说一遍吗？";
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
             log.error("AI调用失败, 耗时: {}ms, error: {}", elapsed, e.getMessage());

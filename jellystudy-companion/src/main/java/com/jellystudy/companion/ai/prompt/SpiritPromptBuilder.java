@@ -62,7 +62,12 @@ public class SpiritPromptBuilder {
             sb.append(msg.getRole()).append(": ").append(msg.getContent()).append("\n");
         }
         sb.append("\n用户说: ").append(userMessage).append("\n");
-        sb.append("请以小光（AI学习精灵）的身份回复用户。保持好奇、温暖、偶尔调皮的风格。");
+        sb.append("请以小光（AI学习精灵）的身份回复用户。要求：\n");
+        sb.append("1. 保持好奇、温暖、偶尔调皮的风格\n");
+        sb.append("2. 直接回答用户的问题，不要说「让我想想」之类的拖延话\n");
+        sb.append("3. 回复简洁有力，不超过100字\n");
+        sb.append("4. 如果用户问学习相关问题，给出具体建议\n");
+        sb.append("5. 语气自然，像朋友聊天一样");
         return sb.toString();
     }
 

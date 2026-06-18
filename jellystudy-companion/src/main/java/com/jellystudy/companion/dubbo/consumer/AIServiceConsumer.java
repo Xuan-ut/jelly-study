@@ -44,6 +44,18 @@ public class AIServiceConsumer {
     }
 
     /**
+     * 调用AI生成学习计划详情（降级通道）
+     */
+    public String generatePlanDetail(String subject, String goal, int stageCount, String difficulty) {
+        try {
+            return aiDubboService.generatePlanDetail(subject, goal, stageCount, difficulty);
+        } catch (Exception e) {
+            log.error("调用AI服务失败: generatePlanDetail, subject={}, error={}", subject, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * 调用AI分析用户行为（降级通道）
      */
     public String analyzeUserBehavior(Long userId, List<Map<String, Object>> activities) {

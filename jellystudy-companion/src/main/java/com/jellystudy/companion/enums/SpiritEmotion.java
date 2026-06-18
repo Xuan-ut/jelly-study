@@ -11,7 +11,9 @@ public enum SpiritEmotion {
     HAPPY("开心", "正常完成每日任务"),
     CALM("平静", "有学习但未完成任务"),
     HUNGRY("饥饿", "连续2天未学习"),
-    SLEEPING("沉睡", "连续7天未学习");
+    SLEEPING("沉睡", "连续7天未学习"),
+    ANGRY("愤怒", "费曼教学回答很差"),
+    DISAPPOINTED("失望", "费曼教学理解度低");
 
     private final String displayName;
     private final String triggerCondition;

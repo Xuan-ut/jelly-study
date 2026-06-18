@@ -14,6 +14,12 @@ public class SpiritChatResponseDTO implements Serializable {
     private String spiritMessage;
     private String emotion;
     private List<String> suggestedTopics = new ArrayList<>();
+    /** 意图：normal / generated_plan */
+    private String intent;
+    /** 已生成计划的id（intent=generated_plan时有值） */
+    private String planId;
+    /** 已生成计划的标题 */
+    private String planTitle;
 
     public SpiritChatResponseDTO() {}
 
@@ -25,4 +31,10 @@ public class SpiritChatResponseDTO implements Serializable {
     public void setEmotion(String emotion) { this.emotion = emotion; }
     public List<String> getSuggestedTopics() { return suggestedTopics; }
     public void setSuggestedTopics(List<String> suggestedTopics) { this.suggestedTopics = suggestedTopics; }
+    public String getIntent() { return intent; }
+    public void setIntent(String intent) { this.intent = intent; }
+    public String getPlanId() { return planId; }
+    public void setPlanId(String planId) { this.planId = planId; }
+    public String getPlanTitle() { return planTitle; }
+    public void setPlanTitle(String planTitle) { this.planTitle = planTitle; }
 }

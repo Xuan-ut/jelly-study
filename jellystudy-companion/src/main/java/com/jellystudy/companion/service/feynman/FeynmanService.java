@@ -14,6 +14,9 @@ public interface FeynmanService {
     /** 获取理解度评估结果 */
     AssessmentResult getAssessment(String sessionId);
 
+    /** 主动结束会话并生成教学总结 */
+    AssessmentResult endSession(String sessionId);
+
     class FeynmanSessionResult {
         private String sessionId;
         private String knowledgeId;

@@ -41,3 +41,14 @@ work/
 
 # Image uploads
 image/
+
+# Dubbo / Nacos local cache
+.dubbo/
+nacos/
+
+# Node
+node_modules/
+package-lock.json
+
+# Generated artifacts
+JellyStudy_Experiment_Report.docx
